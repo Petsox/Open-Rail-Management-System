@@ -7,7 +7,7 @@ local rs = component.redstone
 
 gui.checkVersion(2,5)
  
-local prgName = "RMS"
+local prgName = "ORMS"
 local version = "v0.1"
 local x = true
 local y = true
@@ -17,15 +17,9 @@ local function Switch1(guiID, buttonID)
    if x then
       gui.setText(mainGui, LSwitch1, "-", true)
       x = false
-      rs.setBundledOutput(1, 0, 200)
-      os.sleep(1)
-      rs.setBundledOutput(1, 0, 0)
    else
       gui.setText(mainGui, LSwitch1, "|", true)
       x = true
-      rs.setBundledOutput(1, 0, 200)
-      os.sleep(1)
-      rs.setBundledOutput(1, 0, 0)
 end
 
 end
@@ -63,7 +57,7 @@ exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
  
 gui.clearScreen()
-gui.setTop("Rail Managment System by Petsox and others")
+gui.setTop("Open Rail Managment System by Petsox")
 gui.setBottom("Made with Visual Gui v0.1a and Gui library v2.5")
  
 -- Main loop
