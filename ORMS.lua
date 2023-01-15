@@ -4,14 +4,14 @@ gpu.setResolution(160,50)
 local gui = require("gui")
 local event = require("event")
 local rs = component.redstone
- 
+
 gui.checkVersion(2,5)
- 
+ 
 local prgName = "RMS"
 local version = "v0.1"
 local x = true
 local y = true
- 
+
 -- Begin: Callbacks
 local function Switch1(guiID, buttonID)
    if x then
@@ -27,7 +27,7 @@ local function Switch1(guiID, buttonID)
       os.sleep(1)
       rs.setBundledOutput(1, 0, 0)
 end
- 
+
 end
 local function Switch2(guiID, buttonID)
    if y then
@@ -38,7 +38,7 @@ local function Switch2(guiID, buttonID)
       y = true
    end
 end
- 
+
 local function exitButtonCallback(guiID, id)
    local result = gui.getYesNo("", "Do you really want to exit?", "")
    if result == true then
@@ -47,24 +47,24 @@ local function exitButtonCallback(guiID, id)
    gui.displayGui(mainGui)
 end
 -- End: Callbacks
- 
+ 
 -- Begin: Menu definitions
 mainGui = gui.newGui(2, 2, 158, 48, true)
-Rail1 = gui.newLabel(mainGui, 25, 10, "=========================", 0xc0c0c0, 0x0, 7)
+Rail1 = gui.newLabel(mainGui, 25, 10, "=========================", 0x000000, 0xffffff, 7)
 Switch1 = gui.newButton(mainGui, 22, 10, "|", Switch1)
 Switch2 = gui.newButton(mainGui, 50, 10, "|", Switch2)
-Rail2 = gui.newLabel(mainGui, 25, 9, "=========================", 0xc0c0c0, 0x0, 7)
-Rail3 = gui.newLabel(mainGui, 15, 10, "=======", 0xc0c0c0, 0x0, 7)
-Rail4 = gui.newLabel(mainGui, 53, 10, "=======", 0xc0c0c0, 0x0, 7)
-LSwitch1 = gui.newLabel(mainGui, 23, 10, "|", 0xc0c0c0, 0x0, 1)
-LSwitch2 = gui.newLabel(mainGui, 51, 10, "|", 0xc0c0c0, 0x0, 1)
+Rail2 = gui.newLabel(mainGui, 25, 9, "=========================", 0x000000, 0xffffff, 7)
+Rail3 = gui.newLabel(mainGui, 15, 10, "=======", 0x000000, 0xffffff, 7)
+Rail4 = gui.newLabel(mainGui, 53, 10, "=======", 0x000000, 0xffffff, 7)
+LSwitch1 = gui.newLabel(mainGui, 23, 10, "|", 0x000000, 0xffffff, 1)
+LSwitch2 = gui.newLabel(mainGui, 51, 10, "|", 0x000000, 0xffffff, 1)
 exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
- 
+ 
 gui.clearScreen()
 gui.setTop("Rail Managment System by Petsox")
 gui.setBottom("Made with Visual Gui v0.1a and Gui library v2.5")
- 
+ 
 -- Main loop
 while true do
    gui.runGui(mainGui)
