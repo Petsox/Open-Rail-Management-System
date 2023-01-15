@@ -12,13 +12,13 @@ local screenWidth, screenHeight = gpu.getResolution()
 
 local gui = {}
 
-local colorScreenBackground = 0xC0C0C0
+local colorScreenBackground = 0xFFFFFF
 local colorScreenForeground = 0x000000
-local colorTopLineBackground = 0x0000FF
+local colorTopLineBackground = 0x00FF00
 local colorTopLineForeground = 0xFFFFFF
-local colorBottomLineBackground = 0x0000FF
+local colorBottomLineBackground = 0x00FF00
 local colorBottomLineForeground = 0xFFFFFF
-local colorFrameBackground = 0xC0C0C0
+local colorFrameBackground = 0xFFFFFF
 local colorFrameForeground = 0x000000
 local colorButtonBackground = 0x0000FF
 local colorButtonForeground = 0xFFFFFF
