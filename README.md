@@ -6,4 +6,6 @@ System for monitoring and controlling your minecraft railway in real time using 
 </br>
 World and required mods will soon be added and listed
 </br>
-![image](https://user-images.githubusercontent.com/92917981/222973492-8ee0e152-9c80-43c5-a95a-2052005adce8.png)
+
+![image](https://user-images.githubusercontent.com/92917981/222973622-d6da466c-33f6-41e3-a653-53a11b9dd370.png)
+
