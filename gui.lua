@@ -7,6 +7,7 @@ local gpu = component.gpu
 local event = require("event")
 local ser = require("serialization")
 local computer = require("computer")
+local computer = require("ormsLib")
 
 local screenWidth, screenHeight = gpu.getResolution()
 
@@ -26,6 +27,7 @@ local colorButtonClickedBackground = 0x00FF00
 local colorButtonClickedForeground = 0xFFFFFF
 local colorButtonDisabledBackground = 0x000000
 local colorButtonDisabledForeground = 0xFFFFFF
+local colorSignalClickedBackground = 0xFFFFFF
 local colorTextBackground = 0xFFFFFF
 local colorTextForeground = 0xFFFF00
 local colorInputBackground = 0x0000FF
@@ -306,6 +308,29 @@ local function _displayButton(guiID, buttonID)
     if guiID[buttonID].active == true then
       gpu.setBackground(colorButtonClickedBackground)
       gpu.setForeground(colorButtonClickedForeground)
+    elseif guiID[buttonID].enabled == false then
+      gpu.setBackground(colorButtonDisabledBackground)
+      gpu.setForeground(colorButtonDisabledForeground)
+    else
+      gpu.setBackground(colorButtonBackground)
+      gpu.setForeground(colorButtonForeground)
+    end
+    local x = 0
+    if guiID[buttonID].x == "center" then
+      x = guiID.x + math.floor((guiID.width / 2)) - math.floor((guiID[buttonID].lenght / 2))
+    else
+      x = guiID.x + guiID[buttonID].x
+    end
+    gpu.fill(x, guiID[buttonID].y, guiID[buttonID].lenght, 1, " ")
+    gpu.set(x, guiID[buttonID].y, guiID[buttonID].text)
+  end
+end
+
+-- displays a signal
+local function _displaySignal(guiID, buttonID)
+  if guiID[buttonID].visible == true then
+    if guiID[buttonID].active == true then
+      gpu.setBackground(colorSignalClickedBackground)
     elseif guiID[buttonID].enabled == false then
       gpu.setBackground(colorButtonDisabledBackground)
       gpu.setForeground(colorButtonDisabledForeground)
@@ -720,6 +745,41 @@ function gui.newButton(guiID, x, y, text, func)
   return #guiID
 end
 
+-- Switch
+function gui.newSwitch(guiID, x, y, text, func)
+  local tmpTable = {}
+  tmpTable["type"] = "button"
+  tmpTable["y"] = y + guiID.y
+  tmpTable["text"] = text
+  tmpTable["lenght"] = string.len(tmpTable.text)
+  tmpTable["visible"] = true
+  tmpTable["enabled"] = true
+  tmpTable["active"] = false
+  tmpTable["func"] = func
+  tmpTable["x"] = x
+  table.insert(guiID, tmpTable)
+  return #guiID
+end
+
+-- Signal
+function gui.newSignal(guiID, x, y, name)
+  local tmpTable = {}
+  tmpTable["type"] = "button"
+  tmpTable["y"] = y + guiID.y
+  tmpTable["text"] = "."
+  tmpTable["name"] = name
+  tmpTable["lenght"] = string.len(tmpTable.text)
+  tmpTable["visible"] = true
+  tmpTable["enabled"] = true
+  tmpTable["bg"] = 0xFF0000
+  tmpTable["fg"] = 0xFF0000
+  tmpTable["active"] = false
+  tmpTable["func"] = ormsLib.Signal(name)
+  tmpTable["x"] = x
+  table.insert(guiID, tmpTable)
+  return #guiID
+end
+
 -- text input field
 function gui.newText(guiID, x, y, lenght, text, func, fieldLenght, hide)
   local tmpTable = {}
@@ -899,6 +959,24 @@ function gui.resetProgress(guiID, progressID)
   _displayProgress(guiID, progressID)
 end
 
+-- sets the color of a widget
+function gui.setFgColor(guiID, widgetID, color, refresh)
+  guiID[widgetID].fg = color
+  if guiID[widgetID].type == "label" then
+    if refresh == nil or refresh == true then
+      _displayLabel(guiID, widgetID)
+    end
+  end
+end
+
+function gui.setBgColor(guiID, widgetID, color, refresh)
+  guiID[widgetID].bg = color
+  if guiID[widgetID].type == "label" then
+    if refresh == nil or refresh == true then
+      _displayLabel(guiID, widgetID)
+    end
+  end
+end
 -- sets the text of a widget
 function gui.setText(guiID, widgetID, text, refresh)
   guiID[widgetID].text = text
@@ -915,6 +993,11 @@ function gui.setText(guiID, widgetID, text, refresh)
   if guiID[widgetID].type == "multiLineLabel" then
     if refresh == nil or refresh == true then
       _displayMultiLineLabel(guiID, widgetID)
+    end
+  end
+  if guiID[widgetID].type == "button" then
+    if refresh == nil or refresh == true then
+      _displayButton(guiID, widgetID)
     end
   end
 --  gui.displayGui(guiID)
@@ -1304,7 +1387,7 @@ function gui.showMsg(msg1, msg2, msg3)
     gui.runGui(msgGui)
   end
   gui.closeGui(msgGui)
-end
+endgetyes
 
 
 local yesNoRunning = true
