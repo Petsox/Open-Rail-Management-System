@@ -7,7 +7,6 @@ local gpu = component.gpu
 local event = require("event")
 local ser = require("serialization")
 local computer = require("computer")
-local computer = require("ormsLib")
 
 local screenWidth, screenHeight = gpu.getResolution()
 
@@ -762,7 +761,7 @@ function gui.newSwitch(guiID, x, y, text, func)
 end
 
 -- Signal
-function gui.newSignal(guiID, x, y, name)
+function gui.newSignal(guiID, x, y, name, func)
   local tmpTable = {}
   tmpTable["type"] = "button"
   tmpTable["y"] = y + guiID.y
@@ -774,7 +773,7 @@ function gui.newSignal(guiID, x, y, name)
   tmpTable["bg"] = 0xFF0000
   tmpTable["fg"] = 0xFF0000
   tmpTable["active"] = false
-  tmpTable["func"] = ormsLib.Signal(name)
+  tmpTable["func"] = func
   tmpTable["x"] = x
   table.insert(guiID, tmpTable)
   return #guiID
@@ -1005,6 +1004,10 @@ end
 
 function gui.getText(guiID, widgetID)
   return guiID[widgetID].text
+end
+
+function gui.getName(guiID, widgetID)
+  return guiID[widgetID].name
 end
 
 function gui.getCheckboxStatus(guiID, widgetID)
@@ -1387,8 +1390,7 @@ function gui.showMsg(msg1, msg2, msg3)
     gui.runGui(msgGui)
   end
   gui.closeGui(msgGui)
-endgetyes
-
+end
 
 local yesNoRunning = true
 local yesNoValue = false

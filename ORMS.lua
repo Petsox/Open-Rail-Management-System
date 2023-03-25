@@ -3,6 +3,7 @@ local gpu = component.gpu
 gpu.setResolution(160,50)
 local gui = require("gui")
 local event = require("event")
+local ormslib = require("ormslib")
 
 gui.checkVersion(2,5)
  
@@ -42,12 +43,15 @@ local function exitButtonCallback(guiID, id)
 end
 -- End: Callbacks
  
+local function Signal(name)
+   ormslib.Signal("test")
+end
 -- Begin: Menu definitions
 mainGui = gui.newGui(2, 2, 158, 48, true)
 Rail1 = gui.newLabel(mainGui, 25, 10, "=========================", 0x000000, color, 7)
 Switch1 = gui.newSwitch(mainGui, 23, 10, "|", Switch1)
 Switch2 = gui.newSwitch(mainGui, 51, 10, "|", Switch2)
-Switch2 = gui.newSignal(mainGui, 51, 10, "PiOB01")
+Signal1 = gui.newSignal(mainGui, 51, 11, "PiOB01", Signal)
 Rail2 = gui.newLabel(mainGui, 25, 9, "=========================", 0x000000, 0xffffff, 7)
 Rail3 = gui.newLabel(mainGui, 15, 10, "=======", 0x000000, 0xffffff, 7)
 Rail4 = gui.newLabel(mainGui, 53, 10, "=======", 0x000000, 0xffffff, 7)
