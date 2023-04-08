@@ -22,7 +22,7 @@ local function exitButtonCallback(guiID, id)
 end
 
 local function Switch(guiID, widgetID)
-   ormslib.Switch(guiID, widgetID)
+   ormslib.Switch(mainGui, widgetID)
 end
 
 local function Signal(name, widgetID)
@@ -53,16 +53,17 @@ LeVZ1 = gui.newSignal(mainGui, 98, 5, "LeOV1", 0xFF0000, "<", Signal)
 LeVS1 = gui.newSignal(mainGui, 85, 7, "LeOV2", 0xFF0000, ">", Signal)
 -- End Signals
 
--- Switches
-
--- End Switches
-
 --Tracks
 Rail1 = gui.newLabel(mainGui, 89, 4, "╔════╗", 0x000000, color, 6)
 Rail2 = gui.newLabel(mainGui, 89, 5, "║", 0x000000, color, 1)
 Rail3 = gui.newLabel(mainGui, 94, 5, "║", 0x000000, color, 1)
 Rail4 = gui.newLabel(mainGui, 90, 6, "════", 0x000000, color, 6)
 --End Tracks
+
+-- Switches
+LeSw1 = gui.newSwitch(mainGui, 89, 6, "╝", Switch)
+-- End Switches
+
 exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
  

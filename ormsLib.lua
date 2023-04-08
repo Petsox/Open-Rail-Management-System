@@ -64,4 +64,5 @@ function ormslib.Switch(guiID, widgetID)
       gui.setText(mainGui, widgetID, "|", true)
   end
 end
+
 return ormslib
