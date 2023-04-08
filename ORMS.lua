@@ -8,7 +8,7 @@ local ormslib = require("ormslib")
 gui.checkVersion(2,5)
  
 local prgName = "RMS"
-local version = "v0.5"
+local version = "v0.7"
 local color = 0xffffff
 
 -- Begin: Callbacks
