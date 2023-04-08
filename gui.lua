@@ -22,7 +22,7 @@ local colorFrameBackground = 0x000000
 local colorFrameForeground = 0xFFFFFF
 local colorButtonBackground = 0x000000
 local colorButtonForeground = 0xFFFFFF
-local colorButtonClickedBackground = 0x00FF00
+local colorButtonClickedBackground = 0x000000
 local colorButtonClickedForeground = 0xFFFFFF
 local colorButtonDisabledBackground = 0x000000
 local colorButtonDisabledForeground = 0xFFFFFF
@@ -308,9 +308,6 @@ local function _displayButton(guiID, buttonID)
       gpu.setBackground(colorButtonClickedBackground)
       gpu.setForeground(colorButtonClickedForeground)
     elseif guiID[buttonID].enabled == false then
-      gpu.setBackground(colorButtonDisabledBackground)
-      gpu.setForeground(colorButtonDisabledForeground)
-    else
       gpu.setBackground(colorButtonBackground)
       gpu.setForeground(colorButtonForeground)
     end
@@ -327,16 +324,7 @@ end
 
 -- displays a signal
 local function _displaySignal(guiID, buttonID)
-  if guiID[buttonID].visible == true then
-    if guiID[buttonID].active == true then
-      gpu.setBackground(colorSignalClickedBackground)
-    elseif guiID[buttonID].enabled == false then
-      gpu.setBackground(colorButtonDisabledBackground)
-      gpu.setForeground(colorButtonDisabledForeground)
-    else
-      gpu.setBackground(colorButtonBackground)
-      gpu.setForeground(colorButtonForeground)
-    end
+    gpu.setBackground(guiID[buttonID].bg)
     local x = 0
     if guiID[buttonID].x == "center" then
       x = guiID.x + math.floor((guiID.width / 2)) - math.floor((guiID[buttonID].lenght / 2))
@@ -344,8 +332,8 @@ local function _displaySignal(guiID, buttonID)
       x = guiID.x + guiID[buttonID].x
     end
     gpu.fill(x, guiID[buttonID].y, guiID[buttonID].lenght, 1, " ")
+    gpu.setForeground(guiID[buttonID].fg)
     gpu.set(x, guiID[buttonID].y, guiID[buttonID].text)
-  end
 end
 
 -- displays a text
@@ -547,7 +535,11 @@ function gui.displayGui(guiID)
     elseif guiID[i].type == "multiLineLabel" then
       _displayMultiLineLabel(guiID, i)
     elseif guiID[i].type == "button" then
+        if guiID[i].signal == true then
+          _displaySignal(guiID, i)
+        else
       _displayButton(guiID, i)
+    end
     elseif guiID[i].type == "text" then
       _displayText(guiID, i)
     elseif guiID[i].type == "progress" then
@@ -579,7 +571,11 @@ function gui.displayWidget(guiID, widgetID)
     elseif guiID[widgetID].type == "multiLineLabel" then
       _displayMultiLineLabel(guiID, widgetID)
     elseif guiID[widgetID].type == "button" then
+        if guiID[widgetID].signal == true then
+          _displaySignal(guiID, widgetID)
+        else
       _displayButton(guiID, widgetID)
+    end
     elseif guiID[widgetID].type == "text" then
       _displayText(guiID, widgetID)
     elseif guiID[widgetID].type == "progress" then
@@ -761,17 +757,18 @@ function gui.newSwitch(guiID, x, y, text, func)
 end
 
 -- Signal
-function gui.newSignal(guiID, x, y, name, func)
+function gui.newSignal(guiID, x, y, name, bg, dir, func)
   local tmpTable = {}
   tmpTable["type"] = "button"
+  tmpTable["signal"] = true
   tmpTable["y"] = y + guiID.y
-  tmpTable["text"] = "."
+  tmpTable["text"] = dir
   tmpTable["name"] = name
   tmpTable["lenght"] = string.len(tmpTable.text)
   tmpTable["visible"] = true
   tmpTable["enabled"] = true
-  tmpTable["bg"] = 0xFF0000
-  tmpTable["fg"] = 0xFF0000
+  tmpTable["bg"] = bg
+  tmpTable["fg"] = colorScreenBackground
   tmpTable["active"] = false
   tmpTable["func"] = func
   tmpTable["x"] = x
@@ -976,6 +973,17 @@ function gui.setBgColor(guiID, widgetID, color, refresh)
     end
   end
 end
+
+function gui.setSignal(guiID, widgetID, color, refresh)
+  guiID[widgetID].bg = color
+  if guiID[widgetID].type == "button" and guiID[widgetID].signal == true then
+    if refresh == nil or refresh == true then
+      _displaySignal(guiID, widgetID)
+    end
+  end
+end
+
+
 -- sets the text of a widget
 function gui.setText(guiID, widgetID, text, refresh)
   guiID[widgetID].text = text
@@ -1410,7 +1418,6 @@ yesNoMsgLabel2 = gui.newLabel(yesNoGui, "center", 4, "")
 yesNoMsgLabel3 = gui.newLabel(yesNoGui, "center", 5, "")
 yesNoYesButton = gui.newButton(yesNoGui, 3, 8, "yes", yesNoCallbackYes)
 yesNoNoButton = gui.newButton(yesNoGui, 33, 8, "no", yesNoCallbackNo)
-
 
 function gui.getYesNo(msg1, msg2, msg3)
   yesNoRunning = true
