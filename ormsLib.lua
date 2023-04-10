@@ -57,11 +57,11 @@ signalGreenButton = gui.newButton(signalGui, 3, 5, "Set Aspect to Green", Green)
 --Switches
 
 function ormslib.Switch(guiID, widgetID)
-    if gui.getText(mainGui, widgetID) == "|" then
-      gui.setText(mainGui, widgetID, "-", true)
+    if mainGui[widgetID].from == mainGui[widgetID].text then
+      gui.setText(mainGui, widgetID, mainGui[widgetID].to, true)
 
     else
-      gui.setText(mainGui, widgetID, "|", true)
+      gui.setText(mainGui, widgetID, mainGui[widgetID].from, true)
   end
 end
 

@@ -336,6 +336,18 @@ local function _displaySignal(guiID, buttonID)
     gpu.set(x, guiID[buttonID].y, guiID[buttonID].text)
 end
 
+-- displays a switch
+local function _displaySwitch(guiID, buttonID)
+    local x = 0
+    if guiID[buttonID].x == "center" then
+      x = guiID.x + math.floor((guiID.width / 2)) - math.floor((guiID[buttonID].lenght / 2))
+    else
+      x = guiID.x + guiID[buttonID].x
+    end
+    gpu.fill(x, guiID[buttonID].y, guiID[buttonID].lenght, 1, " ")
+    gpu.set(x, guiID[buttonID].y, guiID[buttonID].text)
+end
+
 -- displays a text
 local function _displayText(guiID, textID)
   if guiID[textID].visible == true then
@@ -537,6 +549,8 @@ function gui.displayGui(guiID)
     elseif guiID[i].type == "button" then
         if guiID[i].signal == true then
           _displaySignal(guiID, i)
+        elseif guiID[i].switch == true then
+          _displaySwitch(guiID, i)
         else
       _displayButton(guiID, i)
     end
@@ -573,6 +587,8 @@ function gui.displayWidget(guiID, widgetID)
     elseif guiID[widgetID].type == "button" then
         if guiID[widgetID].signal == true then
           _displaySignal(guiID, widgetID)
+        elseif guiID[widgetID].switch == true then
+          _displaySwitch(guiID, widgetID)
         else
       _displayButton(guiID, widgetID)
     end
@@ -741,12 +757,15 @@ function gui.newButton(guiID, x, y, text, func)
 end
 
 -- Switch
-function gui.newSwitch(guiID, x, y, text, func)
+function gui.newSwitch(guiID, x, y, from, to, func)
   local tmpTable = {}
   tmpTable["type"] = "button"
   tmpTable["y"] = y + guiID.y
-  tmpTable["text"] = text
-  tmpTable["lenght"] = string.len(tmpTable.text)
+  tmpTable["from"] = from
+  tmpTable["to"] = to
+  tmpTable["switch"] = true
+  tmpTable["text"] = from
+  tmpTable["lenght"] = 1
   tmpTable["visible"] = true
   tmpTable["enabled"] = true
   tmpTable["active"] = false
@@ -982,7 +1001,6 @@ function gui.setSignal(guiID, widgetID, color, refresh)
     end
   end
 end
-
 
 -- sets the text of a widget
 function gui.setText(guiID, widgetID, text, refresh)
