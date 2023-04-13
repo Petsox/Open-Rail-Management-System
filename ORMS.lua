@@ -51,8 +51,8 @@ LeOS1 = gui.newSignal(mainGui, 90, 3, "LeOS1", 0xFF0000, "<", Signal)
 LeOS2 = gui.newSignal(mainGui, 90, 5, "LeOS2", 0xFF0000, "<", Signal)
 LeOZ1 = gui.newSignal(mainGui, 93, 5, "LeOZ1", 0xFF0000, ">", Signal)
 LeOZ2 = gui.newSignal(mainGui, 93, 7, "LeOZ2", 0xFF0000, ">", Signal)
-LeVZ1 = gui.newSignal(mainGui, 98, 5, "LeOV1", 0xFF0000, "<", Signal)
-LeVS1 = gui.newSignal(mainGui, 85, 7, "LeOV2", 0xFF0000, ">", Signal)
+LeVZ1 = gui.newSignal(mainGui, 98, 5, "LeVZ1", 0xFF0000, "<", Signal)
+LeVS1 = gui.newSignal(mainGui, 85, 7, "LeVS1", 0xFF0000, ">", Signal)
 -- Vyh. Straky
 StVLe1 = gui.newSignal(mainGui, 27, 8, "StVLe1", 0xFF0000, "V", Signal)
 StVKr1 = gui.newSignal(mainGui, 27, 20, "StVKr1", 0xFF0000, "^", Signal)
@@ -61,21 +61,26 @@ StOKr2 = gui.newSignal(mainGui, 24, 16, "StOKr2", 0xFF0000, "V", Signal)
 StOKr3 = gui.newSignal(mainGui, 26, 16, "StOKr3", 0xFF0000, "V", Signal)
 StOKr4 = gui.newSignal(mainGui, 28, 16, "StOKr4", 0xFF0000, "V", Signal)
 StOLe1 = gui.newSignal(mainGui, 24, 12, "StOLe1", 0xFF0000, "^", Signal)
-StOLe1 = gui.newSignal(mainGui, 26, 12, "StOLe2", 0xFF0000, "^", Signal)
-StOLe1 = gui.newSignal(mainGui, 28, 12, "StOLe3", 0xFF0000, "^", Signal)
-StOLe1 = gui.newSignal(mainGui, 30, 12, "StOLe4", 0xFF0000, "^", Signal)
+StOLe2 = gui.newSignal(mainGui, 26, 12, "StOLe2", 0xFF0000, "^", Signal)
+StOLe3 = gui.newSignal(mainGui, 28, 12, "StOLe3", 0xFF0000, "^", Signal)
+StOLe4 = gui.newSignal(mainGui, 30, 12, "StOLe4", 0xFF0000, "^", Signal)
 -- Krupka
 KrVSt1 = gui.newSignal(mainGui, 27, 43, "KrVSt1", 0xFF0000, ">", Signal)
-KrVBr1 = gui.newSignal(mainGui, 39, 41, "KrVSt1", 0xFF0000, "<", Signal)
+KrVBr1 = gui.newSignal(mainGui, 39, 41, "KrVBr1", 0xFF0000, "<", Signal)
 KrOSt1 = gui.newSignal(mainGui, 30, 41, "KrOSt1", 0xFF0000, "<", Signal)
 KrOBr1 = gui.newSignal(mainGui, 35, 43, "KrOBr1", 0xFF0000, ">", Signal)
+--Brno
+BrVPi1 = gui.newSignal(mainGui, 52, 27, "BrVPi1", 0xFF0000, "V", Signal)
+BrVKr1 = gui.newSignal(mainGui, 55, 39, "BrVKr1", 0xFF0000, "^", Signal)
+BrOPi1 = gui.newSignal(mainGui, 55, 29, "BrVKr1", 0xFF0000, "^", Signal)
+BrOKr1 = gui.newSignal(mainGui, 52, 37, "BrOKr1", 0xFF0000, "V", Signal)
 -- End Signals
 
 --Tracks
 Lednice = {
    gui.newLabel(mainGui, 89, 4, "╔════╗", 0x000000, color, 6),
-   gui.newLabel(mainGui, 89, 5, "|", 0x000000, color, 1),
-   gui.newLabel(mainGui, 94, 5, "|", 0x000000, color, 1),
+   gui.newLabel(mainGui, 89, 5, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 94, 5, "║", 0x000000, color, 1),
    gui.newLabel(mainGui, 90, 6, "════", 0x000000, color, 6),
 }
 
@@ -102,8 +107,72 @@ Vyh_Straky = {
 }
 
 Krupka = {
-   gui.newLabel(mainGui, 27, 42, "═══════════════════════", 0x000000, color, 23),
+   gui.newLabel(mainGui, 27, 42, "══════════════════════════", 0x000000, color, 26),
+   gui.newLabel(mainGui, 53, 42, "╝", 0x000000, color, 1),
 }
+
+Brno = {
+   gui.newMultiLineLabel(mainGui, 53, 20, 1, 0, "|||||||||||||||||||||", 0x000000, color),
+   gui.newLabel(mainGui, 53, 20, "╔", 0x000000, color, 1),
+}
+
+Pilnikov = {
+
+   gui.newLabel(mainGui, 72, 16, "╔", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 17, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 74, 19, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 26, "╔", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 27, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 73, 18, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 73, 20, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 73, 22, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 87, 26, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 89, 24, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 27, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 28, "╝", 0x000000, color, 1),
+   gui.newLabel(mainGui, 86, 27, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 86, 28, "╝", 0x000000, color, 1),
+   gui.newLabel(mainGui, 88, 25, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 88, 26, "╝", 0x000000, color, 1),
+   gui.newLabel(mainGui, 103, 23, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 103, 24, "╝", 0x000000, color, 1),
+   gui.newLabel(mainGui, 82, 16, "╗", 0x000000, color, 1),
+   gui.newLabel(mainGui, 82, 17, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 84, 18, "╗", 0x000000, color, 1),
+   gui.newLabel(mainGui, 84, 19, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 86, 20, "╗", 0x000000, color, 1),
+   gui.newLabel(mainGui, 86, 21, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 93, 20, "╗", 0x000000, color, 1),
+   gui.newLabel(mainGui, 93, 21, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 21, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 22, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 21, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 72, 22, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 74, 23, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 74, 24, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 90, 25, "║", 0x000000, color, 1),
+   gui.newLabel(mainGui, 90, 26, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 92, 20, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 91, 20, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 90, 14, "═", 0x000000, color, 1),
+   gui.newLabel(mainGui, 89, 14, "╚", 0x000000, color, 1),
+   gui.newLabel(mainGui, 75, 18, "═══════", 0x000000, color, 7),
+   gui.newLabel(mainGui, 65, 18, "╞══════", 0x000000, color, 7),
+   gui.newLabel(mainGui, 65, 26, "╞══════", 0x000000, color, 7),
+   gui.newLabel(mainGui, 65, 28, "╞══════", 0x000000, color, 7),
+   gui.newLabel(mainGui, 87, 22, "══════", 0x000000, color, 6),
+   gui.newLabel(mainGui, 80, 28, "╞═════", 0x000000, color, 6),
+   gui.newLabel(mainGui, 75, 20, "═════════", 0x000000, color, 9),
+   gui.newLabel(mainGui, 73, 16, "═════════", 0x000000, color, 9),
+   gui.newLabel(mainGui, 94, 22, "═════════", 0x000000, color, 9),
+   gui.newLabel(mainGui, 75, 22, "═══════════", 0x000000, color, 11),
+   gui.newLabel(mainGui, 91, 24, "════════════", 0x000000, color, 12),
+   gui.newLabel(mainGui, 75, 24, "═════════════", 0x000000, color, 13),
+   gui.newLabel(mainGui, 73, 26, "═════════════", 0x000000, color, 13),
+   gui.newLabel(mainGui, 91, 26, "══════════════", 0x000000, color, 14),
+   gui.newLabel(mainGui, 54, 20, "══════════════════", 0x000000, color, 18),
+}
+
 Other = {
    gui.newLabel(mainGui, 95, 6, "════════════════════════════════", 0x000000, color, 32),
    gui.newLabel(mainGui, 27, 6, "══════════════════════════════════════════════════════════════", 0x000000, color, 62),
@@ -134,7 +203,7 @@ exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
  
 gui.clearScreen()
 gui.setTop("Rail Managment System by Petsox")
-gui.setBottom("Made with Gui library v2.5 reworked by Petsox")
+gui.setBottom("Made with Gui library v2.5 reworked and rewritten by Petsox")
  
 
 

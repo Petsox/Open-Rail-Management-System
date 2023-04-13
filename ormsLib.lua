@@ -1,8 +1,7 @@
 local event = require("event")
 local component = require("component")
 local gui = require("gui")
-local box1_address = component.get("198")
-local box1 = component.proxy(box1_address)
+local SaS = require("SaS")
 local ormslib = {}
 
 local signalRunning = false
@@ -18,20 +17,17 @@ end
 --Signals
 
 local function Red()
-  gui.setSignal(mainGui, signalID, 0xFF0000, true)
-  box1.setAspect(signalName, 5)
+  SaS.Red(signalName, signalID)
   Cancel()
 end
 
 local function Yellow()
-  gui.setSignal(mainGui, signalID, 0xFFFF00, true)
-  box1.setAspect(signalName, 3)
+  SaS.Yellow(signalName, signalID)
   Cancel()
 end
 
 local function Green()
-  gui.setSignal(mainGui, signalID, 0x00FF00, true)
-  box1.setAspect(signalName, 1)
+  SaS.Green(signalName, signalID)
   Cancel()
 end
 
