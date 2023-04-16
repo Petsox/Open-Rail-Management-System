@@ -757,7 +757,7 @@ function gui.newButton(guiID, x, y, text, func)
 end
 
 -- Switch
-function gui.newSwitch(guiID, x, y, from, to, func)
+function gui.newSwitch(guiID, x, y, from, to, name, func)
   local tmpTable = {}
   tmpTable["type"] = "button"
   tmpTable["y"] = y + guiID.y
@@ -770,6 +770,7 @@ function gui.newSwitch(guiID, x, y, from, to, func)
   tmpTable["enabled"] = true
   tmpTable["active"] = false
   tmpTable["func"] = func
+  tmpTable["name"] = name
   tmpTable["x"] = x
   table.insert(guiID, tmpTable)
   return #guiID
@@ -1025,7 +1026,6 @@ function gui.setText(guiID, widgetID, text, refresh)
       _displayButton(guiID, widgetID)
     end
   end
---  gui.displayGui(guiID)
 end
 
 function gui.getText(guiID, widgetID)
