@@ -3,6 +3,7 @@ local gpu = component.gpu
 gpu.setResolution(160,50)
 local gui = require("gui")
 local SaS = require("SaS")
+local computer = require("computer")
 local event = require("event")
 local ormslib = require("ormslib")
 
