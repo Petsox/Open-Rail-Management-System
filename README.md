@@ -25,8 +25,8 @@ Any similarities with real station names are purely coincidental.
 
 ## ORMS throughout the development
 </br>
-First Working version - 30.8.2022
+First Working version - 30.8.2022</br>
 ![image](https://user-images.githubusercontent.com/92917981/234371577-79d61228-f193-4e25-810f-d66f4bd9d922.png)
 </br>
-Current Version 1.0 - 25.4.2023
+Current Version 1.0 - 25.4.2023</br>
 ![image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
