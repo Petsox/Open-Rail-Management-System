@@ -19,7 +19,7 @@ Needed Mods:
 </br>
 # ORMS Layout
 </br>
-[image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
+![image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
 </br>
 Any similarities with real station names are purely coincidental.
 
