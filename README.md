@@ -2,6 +2,7 @@
 
 ORMS is a Lua Program for OpenComputers 1.7 and newer. Its main purpouse is controlling your minecraft railway including signals and switches from one place with just your mouse.
 </br>
+</br>
 Tested and developed on Minecraft 1.7.10
 
 # ORMS Demo layout
@@ -10,11 +11,11 @@ World download:
 
 </br>
 Needed Mods:
-  [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)
-  [Computronics](https://wiki.vexatos.com/wiki:computronics)
-   - [AsieLib](https://wiki.vexatos.com/wiki:computronics)
-  [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)
-  [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)
+  [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)</br>
+  [Computronics](https://wiki.vexatos.com/wiki:computronics)</br>
+   - [AsieLib](https://wiki.vexatos.com/wiki:computronics)</br>
+  [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)</br>
+  [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)</br>
 </br>
 ## ORMS Layout
 </br>
