@@ -8,7 +8,6 @@ Tested and developed on Minecraft 1.7.10
 # ORMS Demo layout
 </br>
 World download:
-![ScreenShot](https://raw.githubusercontent.com/i-saumitra/Voice-controlled-MP3-Player/master/screenshot.jpg)
 </br>
 Needed Mods:
   [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)</br>
@@ -16,9 +15,6 @@ Needed Mods:
    - [AsieLib](https://wiki.vexatos.com/wiki:computronics)</br>
   [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)</br>
   [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)</br>
-</br>
-</br>
-## ORMS Layout
 </br>
 </br>
 ![image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
