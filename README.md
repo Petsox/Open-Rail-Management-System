@@ -8,7 +8,7 @@ Tested and developed on Minecraft 1.7.10
 # ORMS Demo layout
 </br>
 World download:
-
+![ScreenShot](https://raw.githubusercontent.com/i-saumitra/Voice-controlled-MP3-Player/master/screenshot.jpg)
 </br>
 Needed Mods:
   [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)</br>
