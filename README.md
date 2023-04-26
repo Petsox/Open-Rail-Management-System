@@ -17,7 +17,8 @@ Needed Mods:
   [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)</br>
   [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)</br>
 </br>
-### ORMS Layout
+</br>
+## ORMS Layout
 </br>
 ![image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
 </br>
