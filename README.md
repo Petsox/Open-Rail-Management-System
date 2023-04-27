@@ -7,7 +7,7 @@ Tested and developed on Minecraft 1.7.10
 
 # ORMS Demo layout
 </br>
-World download:
+Just Install this [Modpack](https://www.technicpack.net/modpack/rp-krizek-petr-3ai-till.1964050)</br>
 </br>
 Needed Mods:
   [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)</br>
