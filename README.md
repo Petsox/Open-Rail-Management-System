@@ -6,15 +6,22 @@ ORMS is a Lua Program for OpenComputers 1.7 and newer. Its main purpouse is cont
 Tested and developed on Minecraft 1.7.10
 
 # ORMS Demo layout
-</br>
-Just Install this [Modpack](https://www.technicpack.net/modpack/rp-krizek-petr-3ai-till.1964050)</br>
+
 </br>
 Needed Mods:
-  [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)</br>
-  [Computronics](https://wiki.vexatos.com/wiki:computronics)</br>
-   - [AsieLib](https://wiki.vexatos.com/wiki:computronics)</br>
-  [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)</br>
-  [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)</br>
+
+  [OpenComputes](https://www.curseforge.com/minecraft/mc-mods/opencomputers)
+  
+  [Computronics](https://wiki.vexatos.com/wiki:computronics)
+
+   - [AsieLib](https://wiki.vexatos.com/wiki:computronics)
+
+  [Railcraft](https://www.curseforge.com/minecraft/mc-mods/railcraft)
+  
+  [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)
+  
+  </br>
+  Or just Install this [Modpack](https://www.technicpack.net/modpack/rp-krizek-petr-3ai-till.1964050)
 </br>
 </br>
 ![image](https://user-images.githubusercontent.com/92917981/234370757-6332b3ea-0772-49a6-95ee-f9b95d0bb5ae.png)
