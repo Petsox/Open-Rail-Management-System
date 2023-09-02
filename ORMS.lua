@@ -5,7 +5,7 @@ local gui = require("gui")
 local SaS = require("SaS")
 local computer = require("computer")
 local event = require("event")
-local ormslib = require("ormslib")
+local ormslib = require("ormsLib")
 
 gui.checkVersion(2,5)
  
