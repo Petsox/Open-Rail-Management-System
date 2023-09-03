@@ -30,7 +30,11 @@ Then, install OpenOS using the OpenOS floppy and run the following command, whic
 
 	wget -f https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/master/installer.lua /tmp/installer.lua && /tmp/installer.lua
  </br>
- ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases/tag/v0.1).
+ </br>
+ 
+ ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases/tag/v0.1)
+
+  </br>
 
 # ORMS Demo layout
 </br>
