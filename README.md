@@ -24,15 +24,17 @@ Needed Mods:
   Or just Install [this Modpack](https://www.technicpack.net/modpack/rp-krizek-petr-3ai-till.1964050) with all mods and a map preinstalled
   
 </br>
+
 When you have all the mods installed, make a computer with an <b>internet card, display, GPU, CPU, memory, HDD</b>
-</br>
-Then, install OpenOS using the OpenOS floppy and run the following command, which will automatically install ORMS into <i>/home/ORMS</i>:
+
+Then, install OpenOS using the OpenOS floppy and run the following command, which will automatically install ORMS into <i>/home/orms</i>:
 
 	wget -f https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/master/installer.lua /tmp/installer.lua && /tmp/installer.lua
  </br>
- </br>
  
- ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases)
+Then configure your controller ID's in SaS.lua and insert your ORMS layout into orms.lua generated using the tool below.
+
+ORMS Layout Generator is available [here](https://github.com/Petsox/ORMS_Layout_Generator/releases)
 
   </br>
 
