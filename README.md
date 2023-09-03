@@ -32,7 +32,7 @@ Then, install OpenOS using the OpenOS floppy and run the following command, whic
  </br>
  </br>
  
- ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases/tag/v0.1)
+ ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases)
 
   </br>
 
