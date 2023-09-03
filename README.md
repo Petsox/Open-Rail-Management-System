@@ -29,6 +29,8 @@ When you have all the mods installed, make a computer with an <b>internet card, 
 Then, install OpenOS using the OpenOS floppy and run the following command, which will automatically install ORMS into <i>/home/ORMS</i>:
 
 	wget -f https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/master/installer.lua /tmp/installer.lua && /tmp/installer.lua
+ </br>
+ ORMS Layout Generator is avalible [here](https://github.com/Petsox/ORMS_Layout_Generator/releases/tag/v0.1).
 
 # ORMS Demo layout
 </br>
