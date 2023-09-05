@@ -18,22 +18,22 @@ local red = 0xff0000
 -- Begin: Callbacks
 
 local function exitButtonCallback(guiID, id)
-	local result = gui.getYesNo("", "Do you really want to exit?", "")
-	if result == true then
-		SaS.reset()
-		term.clear()
-		os.exit()
-		--computer.shutdown()
-	end
-	gui.displayGui(mainGui)
+  local result = gui.getYesNo("", "Do you really want to exit?", "")
+  if result == true then
+    SaS.reset()
+    term.clear()
+    os.exit()
+    --computer.shutdown()
+  end
+  gui.displayGui(mainGui)
 end
 
 local function Switch(guiID, widgetID, name)
-	ormslib.Switch(mainGui, widgetID, gui.getName(mainGui, widgetID))
+  ormslib.Switch(mainGui, widgetID, gui.getName(mainGui, widgetID))
 end
 
 local function Signal(name, widgetID)
-	ormslib.Signal(gui.getName(mainGui, widgetID), widgetID)
+  ormslib.Signal(gui.getName(mainGui, widgetID), widgetID)
 end
 
 -- End: Callbacks
@@ -52,5 +52,5 @@ gui.setBottom("Made with Gui library v2.5 reworked and rewritten by Petsox")
 
 -- Main loop
 while true do
-	gui.runGui(mainGui)
+  gui.runGui(mainGui)
 end
