@@ -6,6 +6,7 @@ local term = require("term")
 local SaS = require("SaS")
 local computer = require("computer")
 local ormslib = require("ormsLib")
+local config = require("station")
 
 gui.checkVersion(2, 5)
 
@@ -16,7 +17,6 @@ local black = 0x000000
 local red = 0xff0000
 
 -- Begin: Callbacks
-
 local function exitButtonCallback(guiID, id)
   local result = gui.getYesNo("", "Do you really want to exit?", "")
   if result == true then
@@ -35,16 +35,26 @@ end
 local function Signal(name, widgetID)
   ormslib.Signal(gui.getName(mainGui, widgetID), widgetID)
 end
-
 -- End: Callbacks
 
 -- Begin: Menu definitions
 mainGui = gui.newGui(2, 2, 158, 48, true)
---Paste generated code here. ORMS Layout generator available on my github.
-
---End Generated Code
 exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
+
+-- Begin: Station configuration
+for _,signal in pairs(config.signals) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], Signal)
+end
+
+for _,track in pairs(config.tracks) do
+  gui.newLabel(mainGui, track[1], track[2], track[3], black, white, 1)
+end
+
+for _,switch in pairs(config.switches) do
+  gui.newSwitch(mainGui, switch[1], switch[2], switch[3], switch[4], switch[5], Switch)
+end
+-- End: Station configuration
 
 gui.clearScreen()
 gui.setTop("Open-Rail-Management-System by Petsox")
