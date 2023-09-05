@@ -1,8 +1,8 @@
 local shell = require("shell")
 local fs = require("filesystem")
 local repo = "https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/master/"
-local repoFiles = {"ORMS.lua","SaS.lua","gui.lua","ormsLib.lua"}
-local installLoc = "/home/ORMS/"
+local repoFiles = {"orms.lua","SaS.lua","gui.lua","ormsLib.lua"}
+local installLoc = "/home/orms/"
 
 if not fs.isDirectory(installLoc) then
     fs.makeDirectory(installLoc)
