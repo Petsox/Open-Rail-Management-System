@@ -43,15 +43,15 @@ exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
 
 -- Begin: Station configuration
-for _,signal in pairs(config.signals) do
+for _,signal in pairs(config.Signals) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], Signal)
 end
 
-for _,track in pairs(config.tracks) do
+for _,track in pairs(config.Tracks) do
   gui.newLabel(mainGui, track[1], track[2], track[3], black, white, 1)
 end
 
-for _,switch in pairs(config.switches) do
+for _,switch in pairs(config.Switches) do
   gui.newSwitch(mainGui, switch[1], switch[2], switch[3], switch[4], switch[5], Switch)
 end
 -- End: Station configuration
