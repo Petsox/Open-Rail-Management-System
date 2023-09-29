@@ -10,8 +10,6 @@ local config = require("station")
 
 gui.checkVersion(2, 5)
 
-local prgName = "RMS"
-local version = "v1.0"
 local white = 0xffffff
 local black = 0x000000
 local red = 0xff0000
@@ -23,7 +21,6 @@ local function exitButtonCallback(guiID, id)
     SaS.reset()
     term.clear()
     os.exit()
-    --computer.shutdown()
   end
   gui.displayGui(mainGui)
 end
