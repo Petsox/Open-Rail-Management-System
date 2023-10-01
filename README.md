@@ -11,7 +11,7 @@ Needed Mods:
 
   [OpenComputers](https://www.curseforge.com/minecraft/mc-mods/opencomputers)
   
-  [Computronics](https://wiki.vexatos.com/wiki:computronics)
+  [Computronics](https://github.com/Petsox/Computronics_Ctyrk4_Edition/tree/master)
 
    - [AsieLib](https://wiki.vexatos.com/wiki:computronics)
 
