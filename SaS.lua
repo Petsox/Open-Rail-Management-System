@@ -14,6 +14,7 @@ end
 local SaS = {}
 
 function SaS.reset()
+  boxVy.setEveryAspect(5)
   oneLight.reset()
   fourLights.reset()
   fiveLights.reset()

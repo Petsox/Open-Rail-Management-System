@@ -7,7 +7,6 @@ local boxNa = component.proxy(component.get("9a29")) -- Signal controller
 local SaS_1xSingle = {}
 
 function SaS_1xSingle.reset()
-  boxVy.setEveryAspect(5)
   boxNa.setEveryAspect(5)
 end
 

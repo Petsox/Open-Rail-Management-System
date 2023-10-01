@@ -8,7 +8,6 @@ local boxNaDn = component.proxy(component.get("9a29")) -- Signal controller (top
 local S_Shunt = {}
 
 function S_Shunt.reset()
-  boxVy.setEveryAspect(5)
   boxNaUp.setEveryAspect(8)
   boxNaDn.setEveryAspect(7)
 end

@@ -11,7 +11,6 @@ local boxNaDnDn = component.proxy(component.get("c2cb")) -- Signal controller (b
 local S_2xDualHead = {}
 
 function S_2xDualHead.reset()
-  boxVy.setEveryAspect(5)
   boxNaUpUp.setEveryAspect(8)
   boxNaUpDn.setEveryAspect(8)
   boxNaDnUp.setEveryAspect(5)

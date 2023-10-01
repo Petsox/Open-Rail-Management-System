@@ -13,7 +13,6 @@ local boxNaDn = component.proxy(component.get("147a")) -- Signal controller (bot
 local S_2xDualHead1xSingle = {}
 
 function S_2xDualHead1xSingle.reset()
-  boxVy.setEveryAspect(5)
   boxNaUpUp.setEveryAspect(8)
   boxNaUpDn.setEveryAspect(8)
   boxNaDnUp.setEveryAspect(5)
@@ -61,14 +60,6 @@ function S_2xDualHead1xSingle.Posun(signalName)
   boxNaDnUp.setAspect(signalName .. "D", 8)
   boxNaDnDn.setAspect(signalName .. "D", 8)
   boxNaDn.setAspect(signalName, 6)
-end
-
-function S_2xDualHead1xSingle.switchFrom(switchName)
-  boxVy.setAspect(switchName, 5)
-end
-
-function S_2xDualHead1xSingle.switchTo(switchName)
-  boxVy.setAspect(switchName, 1)
 end
 
 return S_2xDualHead1xSingle
