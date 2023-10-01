@@ -29,8 +29,20 @@ local function Switch(guiID, widgetID, name)
   ormslib.Switch(mainGui, widgetID, gui.getName(mainGui, widgetID))
 end
 
-local function Signal(name, widgetID)
-  ormslib.Signal(gui.getName(mainGui, widgetID), widgetID)
+local function SignalOne(name, widgetID)
+  ormslib.SignalOne(gui.getName(mainGui, widgetID), widgetID)
+end
+
+local function SignalFour(name, widgetID)
+  ormslib.SignalFour(gui.getName(mainGui, widgetID), widgetID)
+end
+
+local function SignalFive(name, widgetID)
+  ormslib.SignalFive(gui.getName(mainGui, widgetID), widgetID)
+end
+
+local function SignalShunt(name, widgetID)
+  ormslib.SignalShunt(gui.getName(mainGui, widgetID), widgetID)
 end
 -- End: Callbacks
 
@@ -40,8 +52,20 @@ exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
 
 -- Begin: Station configuration
-for _,signal in pairs(config.Signals) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], Signal)
+for _,signal in pairs(config.Signal1) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalOne)
+end
+
+for _,signal in pairs(config.Signal4) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFour)
+end
+
+for _,signal in pairs(config.Signal5) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFive)
+end
+
+for _,signal in pairs(config.SignalSh) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalShunt)
 end
 
 for _,track in pairs(config.Tracks) do

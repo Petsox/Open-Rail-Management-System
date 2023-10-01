@@ -14,39 +14,113 @@ end
 
 --Signals
 
-local function Red()
-  SaS.Red(signalName, signalID)
+local function Stuj()
+  SaS.Stuj(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0xFF0000, true)
 end
 
-local function Yellow()
-  SaS.Yellow(signalName, signalID)
+local function Vystraha()
+  SaS.Vystraha(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0xFFFF00, true)
 end
 
-local function Green()
-  SaS.Green(signalName, signalID)
+local function Volno40()
+  SaS.Volno40(signalName, signalID)
+  Cancel()
+  gui.setSignal(mainGui, signalID, 0xFF9900, true)
+end
+
+local function Posun()
+  SaS.Posun(signalName, signalID)
+  Cancel()
+  gui.setSignal(mainGui, signalID, 0x7D7E80, true)
+end
+
+local function NePosun()
+  SaS.NePosun(signalName, signalID)
+  Cancel()
+  gui.setSignal(mainGui, signalID, 0x0000FF, true)
+end
+
+local function Volno()
+  SaS.Volno(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0x00FF00, true)
 end
 
-function ormslib.Signal(name, widgetID)
-  signalGui = gui.newGui(111, 27, 40, 10, true, "Signal " .. name)
-  signalCancelButton = gui.newButton(signalGui, 3, 8, "Cancel", Cancel)
-  signalRedButton = gui.newButton(signalGui, 3, 3, "Set Aspect to Red", Red)
-  signalYellowButton = gui.newButton(signalGui, 3, 4, "Set Aspect to Yellow", Yellow)
-  signalGreenButton = gui.newButton(signalGui, 3, 5, "Set Aspect to Green", Green)
+function ormslib.SignalFive(name, widgetID)
+  signal5Gui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal5Gui, 3, 8, "Zrušit", Cancel)
+  signalStujButton = gui.newButton(signal5Gui, 3, 3, "Návěst na Stůj", Stuj)
+  signalVystrahaButton = gui.newButton(signal5Gui, 3, 4, "Návěst na Výstraha", Vystraha)
+  signalVolno40Button = gui.newButton(signal5Gui, 3, 4, "Návěst na Volno + 40", Volno40)
+  signalVolnoButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Volno", Volno)
+  signalPosunButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Posun Povolen", Posun)
 
   signalID = widgetID
   signalName = name
   signalRunning = true
-  gui.displayGui(signalGui)
+  gui.displayGui(signal5Gui)
   while signalRunning == true do
-    gui.runGui(signalGui)
+    gui.runGui(signal5Gui)
   end
-  gui.closeGui(signalGui)
+  gui.closeGui(signal5Gui)
+  return signalValue
+end
+
+function ormslib.SignalOne(name, widgetID)
+  signal1Gui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal1Gui, 3, 8, "Zrušit", Cancel)
+  signalStujButton = gui.newButton(signal1Gui, 3, 3, "Návěst na Stůj", Stuj)
+  signalVystrahaButton = gui.newButton(signal1Gui, 3, 4, "Návěst na Výstraha", Vystraha)
+  signalVolnoButton = gui.newButton(signal1Gui, 3, 5, "Návěst na Volno", Volno)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(signal1Gui)
+  while signalRunning == true do
+    gui.runGui(signal1Gui)
+  end
+  gui.closeGui(signal1Gui)
+  return signalValue
+end
+
+function ormslib.SignalFour(name, widgetID)
+  signal4Gui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal4Gui, 3, 8, "Zrušit", Cancel)
+  signalStujButton = gui.newButton(signal4Gui, 3, 3, "Návěst na Stůj", Stuj)
+  signalVystrahaButton = gui.newButton(signal4Gui, 3, 4, "Návěst na Výstraha", Vystraha)
+  signalVolno40Button = gui.newButton(signal4Gui, 3, 4, "Návěst na Volno + 40", Volno40)
+  signalVolnoButton = gui.newButton(signal4Gui, 3, 5, "Návěst na Volno", Volno)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(signal4Gui)
+  while signalRunning == true do
+    gui.runGui(signal4Gui)
+  end
+  gui.closeGui(signal4Gui)
+  return signalValue
+end
+
+function ormslib.SignalShunt(name, widgetID)
+  signalShGui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signalShGui, 3, 8, "Zrušit", Cancel)
+  signalBlueButton = gui.newButton(signalShGui, 3, 3, "Návěst na Posun Zakázán", NePosun)
+  signalWhiteButton = gui.newButton(signalShGui, 3, 4, "Návěst na Posun Povolen", Posun)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(signalShGui)
+  while signalRunning == true do
+    gui.runGui(signalShGui)
+  end
+  gui.closeGui(signalShGui)
   return signalValue
 end
 
