@@ -13,6 +13,7 @@ gui.checkVersion(2, 5)
 local white = 0xffffff
 local black = 0x000000
 local red = 0xff0000
+local blue = 0x0000ff
 
 -- Begin: Callbacks
 local function exitButtonCallback(guiID, id)
@@ -65,7 +66,7 @@ for _,signal in pairs(config.Signal5) do
 end
 
 for _,signal in pairs(config.SignalSh) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalShunt)
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], blue, signal[4], SignalShunt)
 end
 
 for _,track in pairs(config.Tracks) do
