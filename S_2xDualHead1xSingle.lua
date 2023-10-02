@@ -26,8 +26,8 @@ function S_2xDualHead1xSingle.Vystraha(signalName)
   controllers.Light5UpUp.setAspect(signalName .. "U", 3)
   controllers.Light5UpDn.setAspect(signalName .. "U", 6)
   controllers.Light5DnUp.setAspect(signalName .. "D", 6)
-  controllers.Light5DnDn.setAspect(signalName .. "D", 3)
-  controllers.Light5Dn.setAspect(signalName, 6)
+  controllers.Light5DnDn.setAspect(signalName .. "D", 6)
+  controllers.Light5Dn.setAspect(signalName, 3)
 end
 
 function S_2xDualHead1xSingle.Volno40(signalName)
@@ -50,8 +50,8 @@ function S_2xDualHead1xSingle.Posun(signalName)
   controllers.Light5UpUp.setAspect(signalName .. "U", 6)
   controllers.Light5UpDn.setAspect(signalName .. "U", 6)
   controllers.Light5DnUp.setAspect(signalName .. "D", 6)
-  controllers.Light5DnDn.setAspect(signalName .. "D", 6)
-  controllers.Light5Dn.setAspect(signalName, 7)
+  controllers.Light5DnDn.setAspect(signalName .. "D", 7)
+  controllers.Light5Dn.setAspect(signalName, 6)
 end
 
 return S_2xDualHead1xSingle

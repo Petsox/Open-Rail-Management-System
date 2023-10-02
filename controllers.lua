@@ -1,3 +1,9 @@
+local component = require("component")
+
+local function getController(address)
+    return component.proxy(component.get(address))
+end
+
 local controllers = {}
 
 -- Switches
@@ -25,9 +31,5 @@ controllers.Light5DnUp  = getController("CHANGE_ME") -- Signal controller (botto
 controllers.Light5DnDn  = getController("CHANGE_ME") -- Signal controller (bottom dual, bottom light - 3) - bílá
 
 controllers.Light5Dn    = getController("CHANGE_ME") -- Signal controller (bottom single - 4) - žlutá
-
-local function getController(address)
-    return component.proxy(component.get(address))
-end
 
 return controllers

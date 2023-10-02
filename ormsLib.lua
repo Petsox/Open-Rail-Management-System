@@ -51,8 +51,8 @@ local function Volno()
 end
 
 function ormslib.SignalFive(name, widgetID)
-  signal5Gui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
-  signalCancelButton = gui.newButton(signal5Gui, 3, 8, "Zrušit", Cancel)
+  signal5Gui = gui.newGui(111, 27, 40, 12, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal5Gui, 3, 9, "Zrušit", Cancel)
   signalStujButton = gui.newButton(signal5Gui, 3, 3, "Návěst na Stůj", Stuj)
   signalVystrahaButton = gui.newButton(signal5Gui, 3, 4, "Návěst na Výstraha", Vystraha)
   signalVolno40Button = gui.newButton(signal5Gui, 3, 5, "Návěst na Volno + 40", Volno40)
