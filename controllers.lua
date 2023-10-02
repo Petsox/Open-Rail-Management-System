@@ -11,20 +11,20 @@ controllers.ShuntUp     = getController("CHANGE_ME") -- Signal controller (dual,
 controllers.ShuntDn     = getController("CHANGE_ME") -- Signal controller (dual, bottom light - 1) - modrá
 
 -- 2x Two light signal (S_2xDualHead)
-controllers.4LightUpUp  = getController("CHANGE_ME") -- Signal controller (top dual, top light - 0) - žlutá
-controllers.4LightUpDn  = getController("CHANGE_ME") -- Signal controller (top dual, bottom light - 1) - zelená
+controllers.Light4UpUp  = getController("CHANGE_ME") -- Signal controller (top dual, top light - 0) - žlutá
+controllers.Light4UpDn  = getController("CHANGE_ME") -- Signal controller (top dual, bottom light - 1) - zelená
 
-controllers.4LightDnUp  = getController("CHANGE_ME") -- Signal controller (bottom dual, top light - 2) - červená
-controllers.4LightDnDn  = getController("CHANGE_ME") -- Signal controller (bottom dual, bottom light - 3) - žlutá
+controllers.Light4DnUp  = getController("CHANGE_ME") -- Signal controller (bottom dual, top light - 2) - červená
+controllers.Light4DnDn  = getController("CHANGE_ME") -- Signal controller (bottom dual, bottom light - 3) - žlutá
 
 -- 2x Two light signal + 1x Single light signal (S_2xDualHead1xSingle)
-controllers.5LightUpUp  = getController("CHANGE_ME") -- Signal controller (top dual, top light - 0) - žlutá
-controllers.5LightUpDn  = getController("CHANGE_ME") -- Signal controller (top dual, bottom light - 1) - zelená
+controllers.Light5UpUp  = getController("CHANGE_ME") -- Signal controller (top dual, top light - 0) - žlutá
+controllers.Light5UpDn  = getController("CHANGE_ME") -- Signal controller (top dual, bottom light - 1) - zelená
 
-controllers.5LightDnUp  = getController("CHANGE_ME") -- Signal controller (bottom dual, top light - 2) - červená
-controllers.5LightDnDn  = getController("CHANGE_ME") -- Signal controller (bottom dual, bottom light - 3) - bílá
+controllers.Light5DnUp  = getController("CHANGE_ME") -- Signal controller (bottom dual, top light - 2) - červená
+controllers.Light5DnDn  = getController("CHANGE_ME") -- Signal controller (bottom dual, bottom light - 3) - bílá
 
-controllers.5LightDn    = getController("CHANGE_ME") -- Signal controller (bottom single - 4) - žlutá
+controllers.Light5Dn    = getController("CHANGE_ME") -- Signal controller (bottom single - 4) - žlutá
 
 local function getController(address)
     return component.proxy(component.get(address))

@@ -5,40 +5,40 @@ local controllers = require("controllers")
 local S_2xDualHead = {}
 
 function S_2xDualHead.reset()
-  controllers.4LightUpUp.setEveryAspect(6)
-  controllers.4LightUpDn.setEveryAspect(6)
-  controllers.4LightDnUp.setEveryAspect(5)
-  controllers.4LightDnDn.setEveryAspect(6)
+  controllers.Light4UpUp.setEveryAspect(6)
+  controllers.Light4UpDn.setEveryAspect(6)
+  controllers.Light4DnUp.setEveryAspect(5)
+  controllers.Light4DnDn.setEveryAspect(6)
 end
 
 --Signals
 
 function S_2xDualHead.Stuj(signalName)
-  controllers.4LightUpUp.setAspect(signalName .. "U", 6)
-  controllers.4LightUpDn.setAspect(signalName .. "U", 6)
-  controllers.4LightDnUp.setAspect(signalName .. "D", 5)
-  controllers.4LightDnDn.setAspect(signalName .. "D", 6)
+  controllers.Light4UpUp.setAspect(signalName .. "U", 6)
+  controllers.Light4UpDn.setAspect(signalName .. "U", 6)
+  controllers.Light4DnUp.setAspect(signalName .. "D", 5)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 6)
 end
 
 function S_2xDualHead.Vystraha(signalName)
-  controllers.4LightUpUp.setAspect(signalName .. "U", 3)
-  controllers.4LightUpDn.setAspect(signalName .. "U", 6)
-  controllers.4LightDnUp.setAspect(signalName .. "D", 6)
-  controllers.4LightDnDn.setAspect(signalName .. "D", 3)
+  controllers.Light4UpUp.setAspect(signalName .. "U", 3)
+  controllers.Light4UpDn.setAspect(signalName .. "U", 6)
+  controllers.Light4DnUp.setAspect(signalName .. "D", 6)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 3)
 end
 
 function S_2xDualHead.Volno40(signalName)
-  controllers.4LightUpUp.setAspect(signalName .. "U", 6)
-  controllers.4LightUpDn.setAspect(signalName .. "U", 1)
-  controllers.4LightDnUp.setAspect(signalName .. "D", 6)
-  controllers.4LightDnDn.setAspect(signalName .. "D", 3)
+  controllers.Light4UpUp.setAspect(signalName .. "U", 6)
+  controllers.Light4UpDn.setAspect(signalName .. "U", 1)
+  controllers.Light4DnUp.setAspect(signalName .. "D", 6)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 3)
 end
 
 function S_2xDualHead.Volno(signalName)
-  controllers.4LightUpUp.setAspect(signalName .. "U", 6)
-  controllers.4LightUpDn.setAspect(signalName .. "U", 1)
-  controllers.4LightDnUp.setAspect(signalName .. "D", 6)
-  controllers.4LightDnDn.setAspect(signalName .. "D", 6)
+  controllers.Light4UpUp.setAspect(signalName .. "U", 6)
+  controllers.Light4UpDn.setAspect(signalName .. "U", 1)
+  controllers.Light4DnUp.setAspect(signalName .. "D", 6)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 6)
 end
 
 return S_2xDualHead
