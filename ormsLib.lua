@@ -55,9 +55,9 @@ function ormslib.SignalFive(name, widgetID)
   signalCancelButton = gui.newButton(signal5Gui, 3, 8, "Zrušit", Cancel)
   signalStujButton = gui.newButton(signal5Gui, 3, 3, "Návěst na Stůj", Stuj)
   signalVystrahaButton = gui.newButton(signal5Gui, 3, 4, "Návěst na Výstraha", Vystraha)
-  signalVolno40Button = gui.newButton(signal5Gui, 3, 4, "Návěst na Volno + 40", Volno40)
-  signalVolnoButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Volno", Volno)
-  signalPosunButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Posun Povolen", Posun)
+  signalVolno40Button = gui.newButton(signal5Gui, 3, 5, "Návěst na Volno + 40", Volno40)
+  signalVolnoButton = gui.newButton(signal5Gui, 3, 6, "Návěst na Volno", Volno)
+  signalPosunButton = gui.newButton(signal5Gui, 3, 7, "Návěst na Posun Povolen", Posun)
 
   signalID = widgetID
   signalName = name
@@ -93,8 +93,8 @@ function ormslib.SignalFour(name, widgetID)
   signalCancelButton = gui.newButton(signal4Gui, 3, 8, "Zrušit", Cancel)
   signalStujButton = gui.newButton(signal4Gui, 3, 3, "Návěst na Stůj", Stuj)
   signalVystrahaButton = gui.newButton(signal4Gui, 3, 4, "Návěst na Výstraha", Vystraha)
-  signalVolno40Button = gui.newButton(signal4Gui, 3, 4, "Návěst na Volno + 40", Volno40)
-  signalVolnoButton = gui.newButton(signal4Gui, 3, 5, "Návěst na Volno", Volno)
+  signalVolno40Button = gui.newButton(signal4Gui, 3, 5, "Návěst na Volno + 40", Volno40)
+  signalVolnoButton = gui.newButton(signal4Gui, 3, 6, "Návěst na Volno", Volno)
 
   signalID = widgetID
   signalName = name
