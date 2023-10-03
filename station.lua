@@ -16,4 +16,7 @@ Config.Tracks = {
 }
 Config.Switches = {
 }
+Config.SignalEx = {
+{34, 15, "Pr1OdTe1", "^"},
+}
 return Config

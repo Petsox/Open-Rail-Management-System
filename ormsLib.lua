@@ -136,4 +136,20 @@ function ormslib.Switch(guiID, widgetID, name)
   end
 end
 
+--Predvest
+function ormslib.SignalExpect(name, widgetID)
+  predvestGui = gui.newGui(111, 27, 40, 10, true, "Předvěst " .. name)
+  signalCancelButton = gui.newButton(predvestGui, 3, 8, "Zrušit", Cancel)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(predvestGui)
+  while signalRunning == true do
+    gui.runGui(predvestGui)
+  end
+  gui.closeGui(predvestGui)
+  return signalValue
+end
+
 return ormslib

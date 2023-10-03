@@ -32,4 +32,8 @@ controllers.Light5DnDn  = getController("CHANGE_ME") -- Signal controller (botto
 
 controllers.Light5Dn    = getController("CHANGE_ME") -- Signal controller (bottom single - 4) - žlutá
 
+-- Expect signals (Předvěsti)
+controllers.ExpectUp    = getController("CHANGE_ME") -- Signal controller (top light - 0) - žlutá
+controllers.ExpectDn    = getController("CHANGE_ME") -- Signal controller (bottom light - 1) - zelená
+
 return controllers
