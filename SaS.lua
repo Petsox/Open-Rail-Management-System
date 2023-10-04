@@ -5,6 +5,7 @@ local oneLight = require("S_1xSingle")
 local fourLights = require("S_2xDualHead")
 local fiveLights = require("S_2xDualHead1xSingle")
 local shuntLights = require("S_Shunt")
+local expectLights = require("S_Expect")
 
 local function startswith(str, prefix)
   return str:sub(1, #prefix) == prefix
@@ -18,6 +19,7 @@ function SaS.reset()
   fourLights.reset()
   fiveLights.reset()
   shuntLights.reset()
+  expectLights.reset()
 end
 
 SaS.reset()
@@ -30,6 +32,7 @@ function SaS.Stuj(signalName)
   elseif startswith(signalName, "5") then
       fiveLights.Stuj(signalName)
   end
+  expectLights.Vystraha("Pr" .. signalName)
 end
 
 function SaS.Vystraha(signalName)
@@ -40,6 +43,7 @@ function SaS.Vystraha(signalName)
   elseif startswith(signalName, "5") then
     fiveLights.Vystraha(signalName)
   end
+  expectLights.Volno("Pr" .. signalName)
 end
 
 function SaS.Volno40(signalName)
@@ -48,6 +52,7 @@ function SaS.Volno40(signalName)
   elseif startswith(signalName, "5") then
     fiveLights.Volno40(signalName)
   end
+  expectLights.Ocek40("Pr" .. signalName)
 end
 
 function SaS.Volno(signalName)
@@ -58,6 +63,7 @@ function SaS.Volno(signalName)
   elseif startswith(signalName, "5") then
     fiveLights.Volno(signalName)
   end
+  expectLights.Volno("Pr" .. signalName)
 end
 
 function SaS.Posun(signalName)

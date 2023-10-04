@@ -18,18 +18,21 @@ local function Stuj()
   SaS.Stuj(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0xFF0000, true)
+  gui.setSignal(mainGui, "Pr" .. signalID, 0xFFFF00, true)
 end
 
 local function Vystraha()
   SaS.Vystraha(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0xFFFF00, true)
+  gui.setSignal(mainGui, "Pr" .. signalID, 0x00FF00, true)
 end
 
 local function Volno40()
   SaS.Volno40(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0xFF9900, true)
+  gui.setSignal(mainGui, "Pr" .. signalID, 0xFF9900, true)
 end
 
 local function Posun()
@@ -48,6 +51,7 @@ local function Volno()
   SaS.Volno(signalName, signalID)
   Cancel()
   gui.setSignal(mainGui, signalID, 0x00FF00, true)
+  gui.setSignal(mainGui, "Pr" .. signalID, 0x00FF00, true)
 end
 
 function ormslib.SignalFive(name, widgetID)
@@ -124,22 +128,10 @@ function ormslib.SignalShunt(name, widgetID)
   return signalValue
 end
 
---Switches
-
-function ormslib.Switch(guiID, widgetID, name)
-  if mainGui[widgetID].from == mainGui[widgetID].text then
-    SaS.switchTo(mainGui[widgetID].name)
-    gui.setText(mainGui, widgetID, mainGui[widgetID].to, true)
-  else
-    SaS.switchFrom(mainGui[widgetID].name)
-    gui.setText(mainGui, widgetID, mainGui[widgetID].from, true)
-  end
-end
-
 --Predvest
 function ormslib.SignalExpect(name, widgetID)
-  predvestGui = gui.newGui(111, 27, 40, 10, true, "Předvěst " .. name)
-  signalCancelButton = gui.newButton(predvestGui, 3, 8, "Zrušit", Cancel)
+  predvestGui = gui.newGui(111, 27, 40, 5, true, "Předvěst " .. name)
+  signalCancelButton = gui.newButton(predvestGui, 3, 2, "Zrušit", Cancel)
 
   signalID = widgetID
   signalName = name
@@ -150,6 +142,18 @@ function ormslib.SignalExpect(name, widgetID)
   end
   gui.closeGui(predvestGui)
   return signalValue
+end
+
+--Switches
+
+function ormslib.Switch(guiID, widgetID, name)
+  if mainGui[widgetID].from == mainGui[widgetID].text then
+    SaS.switchTo(mainGui[widgetID].name)
+    gui.setText(mainGui, widgetID, mainGui[widgetID].to, true)
+  else
+    SaS.switchFrom(mainGui[widgetID].name)
+    gui.setText(mainGui, widgetID, mainGui[widgetID].from, true)
+  end
 end
 
 return ormslib

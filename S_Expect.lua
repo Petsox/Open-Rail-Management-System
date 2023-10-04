@@ -5,8 +5,8 @@ local controllers = require("controllers")
 local S_Expect = {}
 
 function S_Expect.reset()
-  controllers.ExpectUp.setEveryAspect(6)
-  controllers.ExpectDn.setEveryAspect(1)
+  controllers.ExpectUp.setEveryAspect(3)
+  controllers.ExpectDn.setEveryAspect(6)
 end
 
 --Signals
