@@ -21,6 +21,7 @@ local function Stuj()
   gui.setSignal(mainGui, signalID, 0xFF0000, true)
 
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0xFFFF00, true)
 end
 
@@ -30,6 +31,7 @@ local function Vystraha40()
   gui.setSignal(mainGui, signalID, 0xD7FC03, true)
 
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0xFF9900, true)
 end
 
@@ -39,6 +41,7 @@ local function Vystraha()
   gui.setSignal(mainGui, signalID, 0xFFFF00, true)
 
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0x00FF00, true)
 end
 
@@ -48,6 +51,7 @@ local function Volno40()
   gui.setSignal(mainGui, signalID, 0xFF9900, true)
 
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0xFF9900, true)
 end
 
@@ -57,6 +61,7 @@ local function Volno()
   gui.setSignal(mainGui, signalID, 0x00FF00, true)
 
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0x00FF00, true)
 end
 
@@ -67,6 +72,7 @@ local function Posun()
 
   expectLights.Vystraha("Pr" .. signalName)
   local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
+  if predvest == -1 then return end
   gui.setSignal(mainGui, predvest, 0xFFFF00, true)
 end
 
