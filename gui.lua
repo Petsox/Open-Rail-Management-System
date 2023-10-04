@@ -1055,7 +1055,7 @@ end
 function gui.getSignal(guiID, name)
   for i = 1, #guiID do
     if guiID[i].signal == true then
-      if guiID[i].name == true then
+      if guiID[i].name == name then
         return i
       end
     end

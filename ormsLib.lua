@@ -66,6 +66,7 @@ local function Posun()
   gui.setSignal(mainGui, signalID, 0x7D7E80, true)
 
   expectLights.Vystraha("Pr" .. signalName)
+  local predvest = gui.getSignal(mainGui, "Pr" .. signalName)
   gui.setSignal(mainGui, predvest, 0xFFFF00, true)
 end
 

@@ -21,17 +21,17 @@ function S_2xDualHead.Stuj(signalName)
 end
 
 function S_2xDualHead.Vystraha40(signalName)
-    controllers.Light4UpUp.setAspect(signalName .. "U", 3)
-    controllers.Light4UpDn.setAspect(signalName .. "U", 6)
-    controllers.Light4DnUp.setAspect(signalName .. "D", 6)
-    controllers.Light4DnDn.setAspect(signalName .. "D", 6)
-  end
+  controllers.Light4UpUp.setAspect(signalName .. "U", 3)
+  controllers.Light4UpDn.setAspect(signalName .. "U", 6)
+  controllers.Light4DnUp.setAspect(signalName .. "D", 6)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 3)
+end
 
 function S_2xDualHead.Vystraha(signalName)
   controllers.Light4UpUp.setAspect(signalName .. "U", 3)
   controllers.Light4UpDn.setAspect(signalName .. "U", 6)
   controllers.Light4DnUp.setAspect(signalName .. "D", 6)
-  controllers.Light4DnDn.setAspect(signalName .. "D", 3)
+  controllers.Light4DnDn.setAspect(signalName .. "D", 6)
 end
 
 function S_2xDualHead.Volno40(signalName)
