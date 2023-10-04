@@ -26,4 +26,6 @@ for _, file in pairs(repoFiles) do
   shell.execute("wget -f " .. repo .. file)
 end
 
-print("Update Complete")
+print("Update Complete, rebooting")
+os.sleep(2)
+shell.execute("reboot")
