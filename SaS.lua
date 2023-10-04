@@ -35,6 +35,15 @@ function SaS.Stuj(signalName)
   expectLights.Vystraha("Pr" .. signalName)
 end
 
+function SaS.Vystraha40(signalName)
+  if startswith(signalName, "4") then
+    fourLights.Vystraha40(signalName)
+  elseif startswith(signalName, "5") then
+    fiveLights.Vystraha40(signalName)
+  end
+  expectLights.Ocek40("Pr" .. signalName)
+end
+
 function SaS.Vystraha(signalName)
   if startswith(signalName, "1") then
     oneLight.Vystraha(signalName)

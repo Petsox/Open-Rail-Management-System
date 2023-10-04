@@ -1052,6 +1052,17 @@ function gui.getName(guiID, widgetID)
   return guiID[widgetID].name
 end
 
+function gui.getSignal(guiID, name)
+  for i = 1, #guiID do
+    if guiID[i].signal == true then
+      if guiID[i].name == true then
+        return i
+      end
+    end
+  end
+  return -1
+end
+
 function gui.getCheckboxStatus(guiID, widgetID)
   return guiID[widgetID].status
 end

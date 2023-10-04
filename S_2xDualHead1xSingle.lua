@@ -22,12 +22,20 @@ function S_2xDualHead1xSingle.Stuj(signalName)
   controllers.Light5Dn.setAspect(signalName, 6)
 end
 
+function S_2xDualHead1xSingle.Vystraha40(signalName)
+    controllers.Light5UpUp.setAspect(signalName .. "U", 3)
+    controllers.Light5UpDn.setAspect(signalName .. "U", 6)
+    controllers.Light5DnUp.setAspect(signalName .. "D", 6)
+    controllers.Light5DnDn.setAspect(signalName .. "D", 6)
+    controllers.Light5Dn.setAspect(signalName, 3)
+  end
+
 function S_2xDualHead1xSingle.Vystraha(signalName)
   controllers.Light5UpUp.setAspect(signalName .. "U", 3)
   controllers.Light5UpDn.setAspect(signalName .. "U", 6)
   controllers.Light5DnUp.setAspect(signalName .. "D", 6)
   controllers.Light5DnDn.setAspect(signalName .. "D", 6)
-  controllers.Light5Dn.setAspect(signalName, 3)
+  controllers.Light5Dn.setAspect(signalName, 6)
 end
 
 function S_2xDualHead1xSingle.Volno40(signalName)

@@ -7,9 +7,6 @@ local SaS = require("SaS")
 local computer = require("computer")
 local ormslib = require("ormsLib")
 local config = require("station")
-local thread = require("thread")
-
-local expectLights = require("S_Expect")
 
 gui.checkVersion(2, 5)
 
@@ -79,7 +76,7 @@ end
 
 --Predvesti
 for _,signal in pairs(config.SignalEx) do
-  local signalId = gui.newSignal(mainGui, signal[1], signal[2], signal[3], yellow, signal[4], SignalExpect)
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], yellow, signal[4], SignalExpect)
 end
 
 for _,track in pairs(config.Tracks) do
