@@ -1,6 +1,7 @@
 local component = require("component")
 
 local function getController(address)
+    if address == "CHANGE_ME" then return {["setEveryAspect"] = function() end} end
     return component.proxy(component.get(address))
 end
 
