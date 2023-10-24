@@ -82,27 +82,7 @@ local function NePosun()
   gui.setSignal(mainGui, signalID, 0x0000FF, true)
 end
 
--- 5 svetelny navestidlo
-function ormslib.SignalFive(name, widgetID)
-  signal5Gui = gui.newGui(111, 27, 40, 12, true, "Návěst " .. name)
-  signalCancelButton = gui.newButton(signal5Gui, 3, 10, "Zrušit", Cancel)
-  signalStujButton = gui.newButton(signal5Gui, 3, 3, "Návěst na Stůj", Stuj)
-  signalVystraha40Button = gui.newButton(signal5Gui, 3, 4, "Návěst na Výstraha + 40", Vystraha40)
-  signalVystrahaButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Výstraha", Vystraha)
-  signalVolno40Button = gui.newButton(signal5Gui, 3, 6, "Návěst na Volno + 40", Volno40)
-  signalVolnoButton = gui.newButton(signal5Gui, 3, 7, "Návěst na Volno", Volno)
-  signalPosunButton = gui.newButton(signal5Gui, 3, 8, "Návěst na Posun Povolen", Posun)
-
-  signalID = widgetID
-  signalName = name
-  signalRunning = true
-  gui.displayGui(signal5Gui)
-  while signalRunning == true do
-    gui.runGui(signal5Gui)
-  end
-  gui.closeGui(signal5Gui)
-  return signalValue
-end
+--Jednosvětelný
 
 function ormslib.SignalOne(name, widgetID)
   signal1Gui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)
@@ -119,6 +99,25 @@ function ormslib.SignalOne(name, widgetID)
     gui.runGui(signal1Gui)
   end
   gui.closeGui(signal1Gui)
+  return signalValue
+end
+
+-- 3 svetelny navestidlo
+function ormslib.SignalFour(name, widgetID)
+  signal3Gui = gui.newGui(111, 27, 40, 11, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal3Gui, 3, 9, "Zrušit", Cancel)
+  signalStujButton = gui.newButton(signal3Gui, 3, 3, "Návěst na Stůj", Stuj)
+  signalVolnoButton = gui.newButton(signal3Gui, 3, 4, "Návěst na Volno", Volno)
+  signalPosunButton = gui.newButton(signal3Gui, 3, 5, "Návěst na Posun Povolen", Posun)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(signal3Gui)
+  while signalRunning == true do
+    gui.runGui(signal3Gui)
+  end
+  gui.closeGui(signal3Gui)
   return signalValue
 end
 
@@ -142,6 +141,30 @@ function ormslib.SignalFour(name, widgetID)
   gui.closeGui(signal4Gui)
   return signalValue
 end
+
+-- 5 svetelny navestidlo
+function ormslib.SignalFive(name, widgetID)
+  signal5Gui = gui.newGui(111, 27, 40, 12, true, "Návěst " .. name)
+  signalCancelButton = gui.newButton(signal5Gui, 3, 10, "Zrušit", Cancel)
+  signalStujButton = gui.newButton(signal5Gui, 3, 3, "Návěst na Stůj", Stuj)
+  signalVystraha40Button = gui.newButton(signal5Gui, 3, 4, "Návěst na Výstraha + 40", Vystraha40)
+  signalVystrahaButton = gui.newButton(signal5Gui, 3, 5, "Návěst na Výstraha", Vystraha)
+  signalVolno40Button = gui.newButton(signal5Gui, 3, 6, "Návěst na Volno + 40", Volno40)
+  signalVolnoButton = gui.newButton(signal5Gui, 3, 7, "Návěst na Volno", Volno)
+  signalPosunButton = gui.newButton(signal5Gui, 3, 8, "Návěst na Posun Povolen", Posun)
+
+  signalID = widgetID
+  signalName = name
+  signalRunning = true
+  gui.displayGui(signal5Gui)
+  while signalRunning == true do
+    gui.runGui(signal5Gui)
+  end
+  gui.closeGui(signal5Gui)
+  return signalValue
+end
+
+--Posun
 
 function ormslib.SignalShunt(name, widgetID)
   signalShGui = gui.newGui(111, 27, 40, 10, true, "Návěst " .. name)

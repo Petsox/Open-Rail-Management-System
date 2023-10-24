@@ -35,6 +35,10 @@ local function SignalOne(name, widgetID)
   ormslib.SignalOne(gui.getName(mainGui, widgetID), widgetID)
 end
 
+local function SignalThree(name, widgetID)
+  ormslib.SignalThree(gui.getName(mainGui, widgetID), widgetID)
+end
+
 local function SignalFour(name, widgetID)
   ormslib.SignalFour(gui.getName(mainGui, widgetID), widgetID)
 end
@@ -62,6 +66,10 @@ for _,signal in pairs(config.Signal1) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalOne)
 end
 
+for _,signal in pairs(config.Signal1) do
+  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalThree)
+end
+
 for _,signal in pairs(config.Signal4) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFour)
 end
@@ -79,9 +87,13 @@ for _,signal in pairs(config.SignalEx) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], yellow, signal[4], SignalExpect)
 end
 
+--Koleje
+
 for _,track in pairs(config.Tracks) do
   gui.newLabel(mainGui, track[1], track[2], track[3], black, white, 1)
 end
+
+--Vyhybky
 
 for _,switch in pairs(config.Switches) do
   gui.newSwitch(mainGui, switch[1], switch[2], switch[3], switch[4], switch[5], Switch)
