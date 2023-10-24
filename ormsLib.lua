@@ -103,7 +103,7 @@ function ormslib.SignalOne(name, widgetID)
 end
 
 -- 3 svetelny navestidlo
-function ormslib.SignalFour(name, widgetID)
+function ormslib.SignalThree(name, widgetID)
   signal3Gui = gui.newGui(111, 27, 40, 11, true, "Návěst " .. name)
   signalCancelButton = gui.newButton(signal3Gui, 3, 9, "Zrušit", Cancel)
   signalStujButton = gui.newButton(signal3Gui, 3, 3, "Návěst na Stůj", Stuj)

@@ -66,7 +66,7 @@ for _,signal in pairs(config.Signal1) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalOne)
 end
 
-for _,signal in pairs(config.Signal1) do
+for _,signal in pairs(config.Signal3) do
   gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalThree)
 end
 

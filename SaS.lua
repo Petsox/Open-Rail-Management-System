@@ -29,6 +29,8 @@ SaS.reset()
 function SaS.Stuj(signalName)
   if startswith(signalName, "1") then
       oneLight.Stuj(signalName)
+  elseif startswith(signalName, "3") then
+      threeLights.Stuj(signalName)
   elseif startswith(signalName, "4") then
       fourLights.Stuj(signalName)
   elseif startswith(signalName, "5") then
@@ -69,6 +71,8 @@ end
 function SaS.Volno(signalName)
   if startswith(signalName, "1") then
     oneLight.Volno(signalName)
+  elseif startswith(signalName, "3") then
+    threeLights.Volno(signalName)
   elseif startswith(signalName, "4") then
     fourLights.Volno(signalName)
   elseif startswith(signalName, "5") then
@@ -80,6 +84,8 @@ end
 function SaS.Posun(signalName)
   if startswith(signalName, "Sh") then
     shuntLights.Posun(signalName)
+  elseif startswith(signalName, "3") then
+    threeLights.Posun(signalName)
   elseif startswith(signalName, "5") then
     fiveLights.Posun(signalName)
   end
