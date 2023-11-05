@@ -4,6 +4,7 @@ gpu.setResolution(160, 50)
 local gui = require("gui")
 local term = require("term")
 local SaS = require("SaS")
+local controllers = require("controllers")
 local computer = require("computer")
 local ormslib = require("ormsLib")
 local config = require("station")
@@ -62,43 +63,51 @@ exitButton = gui.newButton(mainGui, 153, 48, "exit", exitButtonCallback)
 -- End: Menu definitions
 
 -- Begin: Station configuration
-for _,signal in pairs(config.Signal1) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalOne)
+if controllers.isConnected("Single") then
+  for _,signal in pairs(config.Signal1) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalOne)
+  end
 end
 
-for _,signal in pairs(config.Signal3) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalThree)
+if controllers.isConnected("3UpUp") then
+  for _,signal in pairs(config.Signal3) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalThree)
+  end
 end
 
-for _,signal in pairs(config.Signal4) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFour)
+if controllers.isConnected("4UpUp") then
+  for _,signal in pairs(config.Signal4) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFour)
+  end
 end
 
-for _,signal in pairs(config.Signal5) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFive)
+if controllers.isConnected("5UpUp") then
+  for _,signal in pairs(config.Signal5) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], red, signal[4], SignalFive)
+  end
 end
-
-for _,signal in pairs(config.SignalSh) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], blue, signal[4], SignalShunt)
+--Serazovaci
+if controllers.isConnected("ShUp") then
+  for _,signal in pairs(config.SignalSh) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], blue, signal[4], SignalShunt)
+  end
 end
-
 --Predvesti
-for _,signal in pairs(config.SignalEx) do
-  gui.newSignal(mainGui, signal[1], signal[2], signal[3], yellow, signal[4], SignalExpect)
+if controllers.isConnected("ExUp") then
+  for _,signal in pairs(config.SignalEx) do
+    gui.newSignal(mainGui, signal[1], signal[2], signal[3], yellow, signal[4], SignalExpect)
+  end
 end
-
 --Koleje
-
 for _,track in pairs(config.Tracks) do
   gui.newLabel(mainGui, track[1], track[2], track[3], black, white, 1)
 end
-
 --Vyhybky
-
-for _,switch in pairs(config.Switches) do
-  gui.newSwitch(mainGui, switch[1], switch[2], switch[3], switch[4], switch[5], Switch)
+if controllers.isConnected("Sw") then
+  for _,switch in pairs(config.Switches) do
+    gui.newSwitch(mainGui, switch[1], switch[2], switch[3], switch[4], switch[5], Switch)
+  end
 end
-
 -- End: Station configuration
 
 gui.clearScreen()
