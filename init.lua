@@ -21,6 +21,7 @@ local signalGuiObjects = {}
 local signalConfigByName = {}
 local activeRouteCells = {}
 local crossingObjectsByName = {}
+local switchGuiObjects = {}
 
 local function cellKey(x, y)
     return x .. "," .. y
@@ -204,6 +205,7 @@ for _, switch in pairs(config.Switches) do
     local newSwitch = workspace:addChild(GUI.text(switch[1], switch[2], 0xB2B2B2, text.trim(switch[3]) or ""))
     newSwitch.state = false
     cellObjects[cellKey(switch[1], switch[2])] = {obj = newSwitch, revertColor = 0xB2B2B2}
+    switchGuiObjects[switch[5]] = {obj = newSwitch, cfg = switch}
     newSwitch.eventHandler = function(workspace, object, event)
         if event == "touch" then
             -- When switch is clicked, we toggle the switch in the GUI and send the state to the controller
@@ -293,6 +295,14 @@ for _, signal in pairs(config.Signals) do
                 else
                     for switchName, icon in pairs(result.switches) do
                         controllers.Switches.setActive(switchName, route.isCurveGlyph(icon))
+                        -- Route-thrown switches bypass their own click handler, so sync the
+                        -- GUI (text + toggle state) here too, or it'll silently drift from
+                        -- the physical position until someone happens to click it manually.
+                        local switchEntry = switchGuiObjects[switchName]
+                        if switchEntry then
+                            switchEntry.obj.text = icon
+                            switchEntry.obj.state = (icon == switchEntry.cfg[4])
+                        end
                     end
                     for crossingName in pairs(result.crossings) do
                         controllers.Crossings.activate(crossingName, true)
@@ -321,19 +331,20 @@ for _, signal in pairs(config.Signals) do
                     end
 
                     -- Stations sharing one departure signal across several tracks mark which
-                    -- track is in use with an Inserted (VS/VL) signal. Inserted signals don't
-                    -- share Main signals' state set (Volno/R40.../Stuj) -- they only support
-                    -- Zhas/All/Stuj/PosunDov/PosunZak/OdNavDovJizdu/StujPosunZak/StujPosunDov,
-                    -- so the used one gets "OdNavDovJizdu" (Departure Allowed) regardless of
-                    -- chosenState, and unused siblings go back to their own most-restrictive
-                    -- state, "StujPosunZak", not plain "Stuj".
-                    local usedInserted, siblingInserted = route.insertedSignalsFor(routeGraph, entranceSignal[3], result)
-                    if usedInserted and signalConfigByName[usedInserted] and signalGuiObjects[usedInserted] then
-                        applyMainSignalState(signalConfigByName[usedInserted], signalGuiObjects[usedInserted], "OdNavDovJizdu")
-                    end
-                    for _, siblingName in ipairs(siblingInserted) do
-                        if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
-                            applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
+                    -- track is in use with an Inserted (VS/VL) signal -- but only when the
+                    -- route actually authorizes a departure past a real signal. Arriving AT
+                    -- an Inserted signal (e.g. S -> VS1) just parks a train on that track and
+                    -- doesn't authorize anything past it, so it must stay untouched (Stuj)
+                    -- until a real departure route (e.g. VS1 -> S1-3) is built through it.
+                    if route.classifySignal(signal[3]) ~= "inserted" then
+                        local usedInserted, siblingInserted = route.insertedSignalsFor(routeGraph, entranceSignal[3], result)
+                        if usedInserted and signalConfigByName[usedInserted] and signalGuiObjects[usedInserted] then
+                            applyMainSignalState(signalConfigByName[usedInserted], signalGuiObjects[usedInserted], "OdNavDovJizdu")
+                        end
+                        for _, siblingName in ipairs(siblingInserted) do
+                            if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
+                                applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
+                            end
                         end
                     end
                 end
