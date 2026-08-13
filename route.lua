@@ -152,13 +152,18 @@ local function continuationsFor(cell, cameFromDir, switchChoices)
     return results
 end
 
-local function search(graph, x, y, cameFromDir, exit, visited, switchChoices, path)
+-- strictExit: if true, the exit must also be arrived at heading in ITS OWN facing
+-- direction (used internally for sibling-reachability checks). If false, the exit is a
+-- pure location marker -- any arrival direction counts, since the operator's clicked exit
+-- signal may deliberately face "backwards" relative to the route (e.g. selecting VL3 to
+-- mean "route to track 3" even though the train travels opposite VL3's own facing).
+local function search(graph, x, y, cameFromDir, exit, strictExit, visited, switchChoices, path)
     local k = key(x, y)
     if visited[k] then
         return false
     end
 
-    if x == exit.x and y == exit.y and cameFromDir == exit.dir then
+    if x == exit.x and y == exit.y and (not strictExit or cameFromDir == exit.dir) then
         path[#path + 1] = {x = x, y = y}
         return true
     end
@@ -179,7 +184,7 @@ local function search(graph, x, y, cameFromDir, exit, visited, switchChoices, pa
         end
 
         local vec = DIRS[opt.dir]
-        if search(graph, x + vec.dx, y + vec.dy, opt.dir, exit, visited, switchChoices, path) then
+        if search(graph, x + vec.dx, y + vec.dy, opt.dir, exit, strictExit, visited, switchChoices, path) then
             return true
         end
 
@@ -193,13 +198,10 @@ local function search(graph, x, y, cameFromDir, exit, visited, switchChoices, pa
     return false
 end
 
--- Finds a route from entranceName to exitName. Returns nil if none exists, otherwise
--- {switches = {[switchName] = requiredIconGlyph, ...}, crossings = {[crossingName] = true, ...},
---  cells = {{x,y}, ...}, allStraight = bool}.
-function route.findPath(graph, entranceName, exitName)
+local function findPathInternal(graph, entranceName, exitName, strictExit)
     local entrance = graph.signalsByName[entranceName]
     local exit = graph.signalsByName[exitName]
-    if not entrance or not exit or not entrance.dir or not exit.dir then
+    if not entrance or not exit or not entrance.dir then
         return nil
     end
 
@@ -208,7 +210,7 @@ function route.findPath(graph, entranceName, exitName)
     local path = {{x = entrance.x, y = entrance.y}}
 
     local vec = DIRS[entrance.dir]
-    local ok = search(graph, entrance.x + vec.dx, entrance.y + vec.dy, entrance.dir, exit, visited, switchChoices, path)
+    local ok = search(graph, entrance.x + vec.dx, entrance.y + vec.dy, entrance.dir, exit, strictExit, visited, switchChoices, path)
     if not ok then
         return nil
     end
@@ -232,36 +234,67 @@ function route.findPath(graph, entranceName, exitName)
     return {switches = switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
 end
 
--- Stations that share one departure signal across several tracks (e.g. "L1-3" serving
--- tracks 1 and 3) mark which specific track is in use with an "Inserted Signal" (VS/VL
--- prefix) placed on that track. Given a route just built from entranceName, returns:
---   used     - the name of the Inserted signal the route actually passes (in its own
---              facing direction), or nil if this route doesn't involve one
---   siblings - other Inserted signals reachable from the same entrance (in their own
---              facing direction) that were NOT used by this route, and should therefore
---              be reset to Stuj so only one track shows as authorized at a time
--- Position alone can't tell two Inserted signals on the same physical row apart (e.g.
--- VS1 and VL1 can both sit on the same track), so this checks findPath reachability
--- (which enforces arriving in the signal's own facing direction), not just cell membership.
-function route.insertedSignalsFor(graph, entranceName, result)
-    local onRoute = {}
-    for _, c in ipairs(result.cells) do
-        onRoute[key(c.x, c.y)] = true
+-- Finds a route from entranceName to exitName. entranceName forces the route's first step
+-- in ITS OWN facing direction (a signal only permits movement one way); exitName is purely
+-- positional -- the route just needs to reach its cell, regardless of which way it faces.
+-- Returns nil if none exists, otherwise {switches = {[switchName] = requiredIconGlyph, ...},
+-- crossings = {[crossingName] = true, ...}, cells = {{x,y}, ...}, allStraight = bool}.
+function route.findPath(graph, entranceName, exitName)
+    return findPathInternal(graph, entranceName, exitName, false)
+end
+
+local function dirFromVector(dx, dy)
+    for d, vec in pairs(DIRS) do
+        if vec.dx == dx and vec.dy == dy then
+            return d
+        end
+    end
+    return nil
+end
+
+-- Given a route's result, returns every signal (any kind, any name) whose cell the route
+-- passes through -- excluding the entrance's own cell (index 1 of result.cells) -- paired
+-- with the direction the route actually travels through that cell:
+-- {{name = "S1-3", travelDir = "L"}, ...}. Compare travelDir against that signal's own
+-- .dir to know whether it was passed "the right way" (and should have its state updated)
+-- or merely passed through/against its facing (and must be left alone).
+function route.signalsAlongRoute(graph, result)
+    local byPosition = {}
+    for name, sig in pairs(graph.signalsByName) do
+        local k = key(sig.x, sig.y)
+        byPosition[k] = byPosition[k] or {}
+        table.insert(byPosition[k], name)
     end
 
-    local used = nil
-    local siblings = {}
-    for name, sig in pairs(graph.signalsByName) do
-        if sig.kind == "inserted" and route.findPath(graph, entranceName, name) then
-            if onRoute[key(sig.x, sig.y)] then
-                used = name
-            else
-                siblings[#siblings + 1] = name
+    local found = {}
+    for i = 2, #result.cells do
+        local prev, cur = result.cells[i - 1], result.cells[i]
+        local d = dirFromVector(cur.x - prev.x, cur.y - prev.y)
+        local names = byPosition[key(cur.x, cur.y)]
+        if names then
+            for _, name in ipairs(names) do
+                found[#found + 1] = {name = name, travelDir = d}
             end
         end
     end
+    return found
+end
 
-    return used, siblings
+-- Stations that share one departure signal across several tracks (e.g. "L1-3" serving
+-- tracks 1 and 3) mark which specific track is in use with an "Inserted Signal" (VS/VL
+-- prefix) placed on that track. Given the set of Inserted-signal names actually used by
+-- the route just built (usedNames, keyed by name), returns the other Inserted signals
+-- strictly reachable from the same entrance (arriving in their own facing direction) that
+-- were NOT used -- these should be reset to their most-restrictive state so only one
+-- track ever shows authorized off a shared departure signal at a time.
+function route.siblingInsertedSignals(graph, entranceName, usedNames)
+    local siblings = {}
+    for name, sig in pairs(graph.signalsByName) do
+        if sig.kind == "inserted" and not usedNames[name] and findPathInternal(graph, entranceName, name, true) then
+            siblings[#siblings + 1] = name
+        end
+    end
+    return siblings
 end
 
 -- Lightweight in-memory route reservation. Only guards against two ORMS-built routes

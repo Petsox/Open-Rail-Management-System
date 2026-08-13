@@ -8,6 +8,7 @@ local thread = require("thread")
 local screen = require("grapes.Screen")
 local unicode = require("unicode")
 local route = require("route")
+local keyboard = require("grapes.Keyboard")
 
 local SwitchTexts = {}
 local SignalTexts = {}
@@ -20,6 +21,8 @@ local cellObjects = {}
 local signalGuiObjects = {}
 local signalConfigByName = {}
 local activeRouteCells = {}
+local activeRouteSwitches = {}
+local activeRouteCrossings = {}
 local crossingObjectsByName = {}
 local switchGuiObjects = {}
 
@@ -111,8 +114,47 @@ local function applyMainSignalState(signal, signalObj, state)
             highlightCells(activeRouteCells[signal[3]], false)
             activeRouteCells[signal[3]] = nil
         end
+        if activeRouteSwitches[signal[3]] then
+            for switchName in pairs(activeRouteSwitches[signal[3]]) do
+                local switchEntry = switchGuiObjects[switchName]
+                if switchEntry then switchEntry.obj.locked = false end
+            end
+            activeRouteSwitches[signal[3]] = nil
+        end
+        if activeRouteCrossings[signal[3]] then
+            for crossingName in pairs(activeRouteCrossings[signal[3]]) do
+                for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+                    entry.obj.locked = false
+                end
+            end
+            activeRouteCrossings[signal[3]] = nil
+        end
     end
     workspace:draw()
+end
+
+-- Function: chooseProceedState
+-- Description: Picks the "route is set, proceed" state for a signal by asking it what
+--              states it actually supports, rather than assuming by name/kind -- Inserted
+--              signals (and some shared departure signals like "S1-3") use "OdNavDovJizdu"
+--              instead of Main signals' Volno/R40... vocabulary.
+local function chooseProceedState(signalName, allStraight)
+    local hasOdNavDovJizdu = false
+    local restrictedState = nil
+    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+        if validState == "OdNavDovJizdu" then
+            hasOdNavDovJizdu = true
+        elseif not restrictedState and (string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80") then
+            restrictedState = validState
+        end
+    end
+    if hasOdNavDovJizdu then
+        return "OdNavDovJizdu"
+    end
+    if not allStraight and restrictedState then
+        return restrictedState
+    end
+    return "Volno"
 end
 
 -- Draw exit button
@@ -208,6 +250,7 @@ for _, switch in pairs(config.Switches) do
     switchGuiObjects[switch[5]] = {obj = newSwitch, cfg = switch}
     newSwitch.eventHandler = function(workspace, object, event)
         if event == "touch" then
+            if object.locked then return end
             -- When switch is clicked, we toggle the switch in the GUI and send the state to the controller
             object.state = not object.state
             object.text = object.state and switch[4] or switch[3]
@@ -236,6 +279,7 @@ for _, crossing in pairs(config.Crossings) do
     table.insert(crossingObjectsByName[crossing[5]], {obj = newcrossing, cfg = crossing})
     newcrossing.eventHandler = function(workspace, object, event)
         if event == "touch" then
+            if object.locked then return end
             -- When crossing is clicked, we toggle the crossing (and any sibling sharing its
             -- name) in the GUI and send the state to the controller
             local newState = not object.state
@@ -266,6 +310,14 @@ for _, signal in pairs(config.Signals) do
     -- to depart from it). Only Shunting and Expect signals stay out of route building.
     local isRouteEligible = signalKind == "main" or signalKind == "inserted"
     newSignal.onTouch = function()
+        -- Shift+click the entrance of an already-built route to cancel it (release the
+        -- lock, unlock switches/crossings, clear the highlight) -- works regardless of
+        -- whether Route Mode is currently on, since it targets a specific active route.
+        if keyboard.isShiftDown() and activeRouteCells[signal[3]] then
+            applyMainSignalState(signal, newSignal, "Stuj")
+            return
+        end
+
         -- Automatic route building: only for Main/Inserted signals, only while Route Mode is on.
         if routeModeActive and isRouteEligible then
             if not pendingEntrance then
@@ -298,50 +350,59 @@ for _, signal in pairs(config.Signals) do
                         -- Route-thrown switches bypass their own click handler, so sync the
                         -- GUI (text + toggle state) here too, or it'll silently drift from
                         -- the physical position until someone happens to click it manually.
+                        -- Locked while the route holds it, so it can't be manually toggled
+                        -- out from under the route.
                         local switchEntry = switchGuiObjects[switchName]
                         if switchEntry then
                             switchEntry.obj.text = icon
                             switchEntry.obj.state = (icon == switchEntry.cfg[4])
+                            switchEntry.obj.locked = true
                         end
                     end
+                    activeRouteSwitches[entranceSignal[3]] = result.switches
+
                     for crossingName in pairs(result.crossings) do
                         controllers.Crossings.activate(crossingName, true)
+                        for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+                            entry.obj.locked = true
+                        end
                     end
+                    activeRouteCrossings[entranceSignal[3]] = result.crossings
+
                     activeRouteCells[entranceSignal[3]] = result.cells
                     highlightCells(result.cells, true)
 
+                    -- Set the entrance's own state.
+                    applyMainSignalState(entranceSignal, entranceObj, chooseProceedState(entranceSignal[3], result.allStraight))
+
+                    -- Any OTHER Main/Inserted signal genuinely passed -- in its own facing
+                    -- direction -- along the route (e.g. a shared departure signal like
+                    -- S1-3, or an Inserted VL/VS marking which track is in use) also gets
+                    -- cleared. The clicked exit itself is a pure location marker (it may
+                    -- deliberately face "backwards" relative to the route) and never gets a
+                    -- state, and neither does anything only passed against its own facing.
+                    local usedInserted = {}
                     if route.classifySignal(entranceSignal[3]) == "inserted" then
-                        -- The clicked entrance is itself an Inserted signal (e.g. departing
-                        -- from a specific track): it only supports the Inserted-signal state
-                        -- set, not Volno/R40..., so it always clears to "Departure Allowed".
-                        applyMainSignalState(entranceSignal, entranceObj, "OdNavDovJizdu")
-                    else
-                        -- Straight routes clear to Volno; routes diverging through a curved
-                        -- switch clear to the entrance signal's slowest speed-restricted state.
-                        local chosenState = "Volno"
-                        if not result.allStraight then
-                            for _, validState in pairs(controllers.Signals.getValidStatesForSignal(entranceSignal[3])) do
-                                if string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80" then
-                                    chosenState = validState
-                                    break
-                                end
+                        usedInserted[entranceSignal[3]] = true
+                    end
+                    for _, passed in ipairs(route.signalsAlongRoute(routeGraph, result)) do
+                        local passedSignal = routeGraph.signalsByName[passed.name]
+                        if passed.name ~= entranceSignal[3] and passed.name ~= signal[3]
+                            and passed.travelDir == passedSignal.dir
+                            and (passedSignal.kind == "main" or passedSignal.kind == "inserted")
+                            and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
+                            applyMainSignalState(signalConfigByName[passed.name], signalGuiObjects[passed.name], chooseProceedState(passed.name, result.allStraight))
+                            if passedSignal.kind == "inserted" then
+                                usedInserted[passed.name] = true
                             end
                         end
-                        applyMainSignalState(entranceSignal, entranceObj, chosenState)
                     end
 
-                    -- Stations sharing one departure signal across several tracks mark which
-                    -- track is in use with an Inserted (VS/VL) signal -- but only when the
-                    -- route actually authorizes a departure past a real signal. Arriving AT
-                    -- an Inserted signal (e.g. S -> VS1) just parks a train on that track and
-                    -- doesn't authorize anything past it, so it must stay untouched (Stuj)
-                    -- until a real departure route (e.g. VS1 -> S1-3) is built through it.
-                    if route.classifySignal(signal[3]) ~= "inserted" then
-                        local usedInserted, siblingInserted = route.insertedSignalsFor(routeGraph, entranceSignal[3], result)
-                        if usedInserted and signalConfigByName[usedInserted] and signalGuiObjects[usedInserted] then
-                            applyMainSignalState(signalConfigByName[usedInserted], signalGuiObjects[usedInserted], "OdNavDovJizdu")
-                        end
-                        for _, siblingName in ipairs(siblingInserted) do
+                    -- Reset sibling Inserted signals (other tracks feeding the same shared
+                    -- departure signal) that weren't part of this specific route, so only
+                    -- one ever shows authorized at a time.
+                    if next(usedInserted) then
+                        for _, siblingName in ipairs(route.siblingInsertedSignals(routeGraph, entranceSignal[3], usedInserted)) do
                             if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
                                 applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
                             end
