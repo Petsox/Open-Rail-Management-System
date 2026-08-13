@@ -8,7 +8,6 @@ local thread = require("thread")
 local screen = require("grapes.Screen")
 local unicode = require("unicode")
 local route = require("route")
-local keyboard = require("grapes.Keyboard")
 
 local SwitchTexts = {}
 local SignalTexts = {}
@@ -351,11 +350,11 @@ for _, signal in pairs(config.Signals) do
     -- legitimately start or end at one (e.g. S -> VS1 to arrive on track 1, then VS1 -> S1-3
     -- to depart from it). Only Shunting and Expect signals stay out of route building.
     local isRouteEligible = signalKind == "main" or signalKind == "inserted"
-    newSignal.onTouch = function()
-        -- Shift+click the entrance of an already-built route to cancel it (release the
+    newSignal.onTouch = function(_, _, _, _, _, _, mouseButton)
+        -- Right-click the entrance of an already-built route to cancel it (release the
         -- lock, unlock switches/crossings, clear the highlight) -- works regardless of
         -- whether Route Mode is currently on, since it targets a specific active route.
-        if keyboard.isShiftDown() and activeRouteCells[signal[3]] then
+        if mouseButton == 1 and activeRouteCells[signal[3]] then
             applyMainSignalState(signal, newSignal, "Stuj")
             return
         end
