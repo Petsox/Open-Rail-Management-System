@@ -36,10 +36,10 @@ local CURVE_GLYPHS = {["╗"] = true, ["╝"] = true, ["╚"] = true, ["╔"] = 
 
 -- Signal facing icon -> direction of authorized travel through the signal.
 local FACING_DIR = {
-    ["<"] = "L", ["◀"] = "L", ["◁"] = "L",
-    [">"] = "R", ["▶"] = "R", ["▷"] = "R",
-    ["^"] = "U", ["▲"] = "U", ["△"] = "U",
-    ["V"] = "D", ["▼"] = "D", ["▽"] = "D",
+    ["<"] = "L", ["◀"] = "L", ["◁"] = "L", ["˂"] = "L",
+    [">"] = "R", ["▶"] = "R", ["▷"] = "R", ["˃"] = "R",
+    ["^"] = "U", ["▲"] = "U", ["△"] = "U", ["˄"] = "U",
+    ["V"] = "D", ["▼"] = "D", ["▽"] = "D", ["˅"] = "D",
 }
 
 local function key(x, y)
@@ -280,6 +280,65 @@ function route.signalsAlongRoute(graph, result)
         end
     end
     return found
+end
+
+-- Starting just past (x, y) and walking forward in travelDir, finds the first Main-kind
+-- signal reached facing that same direction of travel -- used to let a route's last signal
+-- react to whatever comes after it, like a real distant signal would. Returns nil (no
+-- lookahead available) if the walk runs off the graph or hits a switch cell before finding
+-- one: a switch means the next signal depends on a position nothing here has set, so which
+-- signal actually comes next is ambiguous.
+function route.nextMainSignal(graph, x, y, travelDir)
+    if not travelDir then
+        return nil
+    end
+
+    local byPosition = {}
+    for name, sig in pairs(graph.signalsByName) do
+        local k = key(sig.x, sig.y)
+        byPosition[k] = byPosition[k] or {}
+        table.insert(byPosition[k], name)
+    end
+
+    local visited = {}
+    local cx, cy, dir = x, y, travelDir
+    while true do
+        local vec = DIRS[dir]
+        cx, cy = cx + vec.dx, cy + vec.dy
+        local k = key(cx, cy)
+        if visited[k] then
+            return nil
+        end
+        visited[k] = true
+
+        local cell = graph.cells[k]
+        if not cell or cell.kind == "switch" then
+            return nil
+        end
+
+        for _, name in ipairs(byPosition[k] or {}) do
+            local sig = graph.signalsByName[name]
+            if sig.kind == "main" and sig.dir == dir then
+                return name
+            end
+        end
+
+        local entrySide = OPPOSITE[dir]
+        local dirs = cell.dirs
+        local nextDir = nil
+        if dirs and dirs[entrySide] then
+            for _, d in ipairs(DIR_ORDER) do
+                if d ~= entrySide and dirs[d] then
+                    nextDir = d
+                    break
+                end
+            end
+        end
+        if not nextDir then
+            return nil
+        end
+        dir = nextDir
+    end
 end
 
 -- Stations that share one departure signal across several tracks (e.g. "L1-3" serving

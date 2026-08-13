@@ -124,19 +124,27 @@ end
 --              controller, and sidesteps the casing quirk above). Other signals are asked
 --              what they actually support: some shared departure signals (like "S1-3") also
 --              use "OdNavDovJizdu" instead of Volno/R40...
-local function chooseProceedState(signalName, allStraight)
+--              downstreamState is the CURRENT real state of whatever signal comes right
+--              after this one (nil if unknown) -- like a real distant signal, this one shows
+--              a Vystraha-family aspect ("Vystraha"/"R40Vystraha"/...) if that next signal is
+--              at Stuj/PN, otherwise a Volno-family aspect ("Volno"/"R40Volno"/...).
+local function chooseProceedState(signalName, allStraight, downstreamState)
     if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
         return "OdNavDovJizdu"
     end
+    local restrictive = downstreamState == "Stuj" or downstreamState == "PN"
+    local suffix = restrictive and "Vystraha" or "Volno"
     if not allStraight then
+        local lowerSuffix = string.lower(suffix)
         for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
             local lowerState = string.lower(validState)
-            if string.sub(lowerState, 1, 3) == "r40" or string.sub(lowerState, 1, 3) == "r60" or string.sub(lowerState, 1, 3) == "r80" then
+            local prefix = string.sub(lowerState, 1, 3)
+            if (prefix == "r40" or prefix == "r60" or prefix == "r80") and string.sub(lowerState, 4) == lowerSuffix then
                 return validState
             end
         end
     end
-    return "Volno"
+    return suffix
 end
 
 -- Function: chooseRestrictiveState
@@ -421,9 +429,6 @@ for _, signal in pairs(config.Signals) do
                     activeRouteCells[entranceSignal[3]] = result.cells
                     highlightCells(result.cells, true)
 
-                    -- Set the entrance's own state.
-                    applyMainSignalState(entranceSignal, entranceObj, chooseProceedState(entranceSignal[3], result.allStraight))
-
                     -- Any OTHER Main/Inserted/Repeater signal genuinely passed -- in its own
                     -- facing direction -- along the route (e.g. a shared departure signal
                     -- like S1-3, an Inserted VL/VS marking which track is in use, or a
@@ -431,20 +436,32 @@ for _, signal in pairs(config.Signals) do
                     -- clicked exit itself is a pure location marker (it may deliberately
                     -- face "backwards" relative to the route) and never gets a state, and
                     -- neither does anything only passed against its own facing.
+                    -- Every Main signal along the route (entrance included) also reacts to
+                    -- whatever comes right after it, like a real distant signal: Stuj/PN
+                    -- downstream means this one shows a Vystraha-family aspect, anything
+                    -- else means Volno-family. Walking back-to-front lets this chain --
+                    -- each signal's "next" is either the following signal already computed
+                    -- this same pass, or, for the one closest to the exit, whatever real
+                    -- signal lies beyond the exit (route.nextMainSignal, only when reachable
+                    -- with no intervening switch to make that ambiguous).
                     -- Repeater signals don't get their own independent aspect when something
                     -- real follows them -- they echo "Opak" + that signal's reduced preview
-                    -- aspect instead, walked back-to-front so a chain of repeaters all echo
-                    -- the same real authority rather than nesting Opak-of-Opak. A repeater
-                    -- with nothing real after it (last thing before the exit) just stands on
-                    -- its own as a departure signal.
+                    -- aspect instead, without changing what's being carried, so a chain of
+                    -- repeaters all echo the same real authority rather than nesting
+                    -- Opak-of-Opak. A repeater with nothing real after it (last thing before
+                    -- the exit) just stands on its own as a departure signal.
                     local usedInserted = {}
                     local touchedAlongRoute = {}
                     if route.classifySignal(entranceSignal[3]) == "inserted" then
                         usedInserted[entranceSignal[3]] = true
                     end
 
+                    local exitTravelDir = nil
                     local relevant = {}
                     for _, passed in ipairs(route.signalsAlongRoute(routeGraph, result)) do
+                        if passed.name == signal[3] then
+                            exitTravelDir = passed.travelDir
+                        end
                         local passedSignal = routeGraph.signalsByName[passed.name]
                         if passed.name ~= entranceSignal[3] and passed.name ~= signal[3]
                             and passed.travelDir == passedSignal.dir
@@ -454,14 +471,16 @@ for _, signal in pairs(config.Signals) do
                         end
                     end
 
-                    local carriedState = nil
+                    local nextMainName = route.nextMainSignal(routeGraph, signal[1], signal[2], exitTravelDir)
+                    local carriedState = nextMainName and controllers.Signals.getState(nextMainName) or nil
+
                     for i = #relevant, 1, -1 do
                         local entry = relevant[i]
                         local appliedState
                         if entry.kind == "repeater" and carriedState then
                             appliedState = "Opak" .. utils.simplifyStateForPreview(carriedState)
                         else
-                            appliedState = chooseProceedState(entry.name, result.allStraight)
+                            appliedState = chooseProceedState(entry.name, result.allStraight, carriedState)
                             carriedState = appliedState
                         end
                         applyMainSignalState(signalConfigByName[entry.name], signalGuiObjects[entry.name], appliedState)
@@ -470,6 +489,10 @@ for _, signal in pairs(config.Signals) do
                             usedInserted[entry.name] = true
                         end
                     end
+
+                    -- Set the entrance's own state, chained off the same carriedState.
+                    applyMainSignalState(entranceSignal, entranceObj, chooseProceedState(entranceSignal[3], result.allStraight, carriedState))
+
                     -- Remember every non-entrance signal this route cleared, so cancelling
                     -- the route (right-click the entrance, or manually setting it to Stuj)
                     -- puts them all back to their own most-restrictive state too.
