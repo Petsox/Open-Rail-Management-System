@@ -23,6 +23,7 @@ local signalConfigByName = {}
 local activeRouteCells = {}
 local activeRouteSwitches = {}
 local activeRouteCrossings = {}
+local activeRouteSignals = {}
 local crossingObjectsByName = {}
 local switchGuiObjects = {}
 
@@ -100,9 +101,61 @@ local function setSignalStateGUI(signal, state, signalTbl)
     end
 end
 
+-- getValidStatesForSignal() returns raw SignalState objects rather than pre-stringified
+-- text (unlike getState()/setState(), which explicitly go through the mod's StateToString()/
+-- fromString()), so OpenComputers' automatic marshalling falls back to SignalState's generic,
+-- unrelated toString() override -- which renders multi-word states as e.g. "Odnavdovjizdu"
+-- instead of "OdNavDovJizdu". The controller's own setState is case-insensitive (confirmed:
+-- both SignalState.contains and fromString use equalsIgnoreCase), so this only matters for
+-- READING the list back; compare case-insensitively and always use our own canonical casing
+-- for what we actually send/compare elsewhere in this file.
+local function hasValidState(signalName, wantedState)
+    local wantedLower = string.lower(wantedState)
+    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+        if string.lower(validState) == wantedLower then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function: chooseProceedState
+-- Description: Picks the "route is set, proceed" state for a signal. VS/VL Inserted signals
+--              always use "OdNavDovJizdu" (checked by name -- faster than querying the
+--              controller, and sidesteps the casing quirk above). Other signals are asked
+--              what they actually support: some shared departure signals (like "S1-3") also
+--              use "OdNavDovJizdu" instead of Volno/R40...
+local function chooseProceedState(signalName, allStraight)
+    if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
+        return "OdNavDovJizdu"
+    end
+    if not allStraight then
+        for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+            local lowerState = string.lower(validState)
+            if string.sub(lowerState, 1, 3) == "r40" or string.sub(lowerState, 1, 3) == "r60" or string.sub(lowerState, 1, 3) == "r80" then
+                return validState
+            end
+        end
+    end
+    return "Volno"
+end
+
+-- Function: chooseRestrictiveState
+-- Description: The counterpart of chooseProceedState for releasing a route -- picks each
+--              signal's own most-restrictive state (Inserted signals: "StujPosunZak" by
+--              name; everything else: "Stuj").
+local function chooseRestrictiveState(signalName)
+    if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "StujPosunZak") then
+        return "StujPosunZak"
+    end
+    return "Stuj"
+end
+
 -- Function: applyMainSignalState
 -- Description: Sets a Main signal's state on the controller, chains the expect signal, updates
---              its GUI color, and (when set back to Stuj) releases any route it was holding.
+--              its GUI color, and (when set back to Stuj) releases any route it was holding:
+--              unlocks switches/crossings, raises any crossing it lowered, resets every other
+--              signal the route had cleared along the way, and clears the highlight.
 --              Shared by the manual state menu and automatic route building.
 local function applyMainSignalState(signal, signalObj, state)
     controllers.Signals.setState(signal[3], state)
@@ -123,38 +176,27 @@ local function applyMainSignalState(signal, signalObj, state)
         end
         if activeRouteCrossings[signal[3]] then
             for crossingName in pairs(activeRouteCrossings[signal[3]]) do
+                controllers.Crossings.activate(crossingName, false)
                 for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
                     entry.obj.locked = false
+                    entry.obj.state = false
+                    entry.obj.color = 0xB2B2B2
+                    entry.obj.text = entry.cfg[3]
                 end
             end
             activeRouteCrossings[signal[3]] = nil
         end
-    end
-    workspace:draw()
-end
-
--- Function: chooseProceedState
--- Description: Picks the "route is set, proceed" state for a signal by asking it what
---              states it actually supports, rather than assuming by name/kind -- Inserted
---              signals (and some shared departure signals like "S1-3") use "OdNavDovJizdu"
---              instead of Main signals' Volno/R40... vocabulary.
-local function chooseProceedState(signalName, allStraight)
-    local hasOdNavDovJizdu = false
-    local restrictedState = nil
-    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
-        if validState == "OdNavDovJizdu" then
-            hasOdNavDovJizdu = true
-        elseif not restrictedState and (string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80") then
-            restrictedState = validState
+        if activeRouteSignals[signal[3]] then
+            local others = activeRouteSignals[signal[3]]
+            activeRouteSignals[signal[3]] = nil
+            for otherName in pairs(others) do
+                if signalConfigByName[otherName] and signalGuiObjects[otherName] then
+                    applyMainSignalState(signalConfigByName[otherName], signalGuiObjects[otherName], chooseRestrictiveState(otherName))
+                end
+            end
         end
     end
-    if hasOdNavDovJizdu then
-        return "OdNavDovJizdu"
-    end
-    if not allStraight and restrictedState then
-        return restrictedState
-    end
-    return "Volno"
+    workspace:draw()
 end
 
 -- Draw exit button
@@ -382,6 +424,7 @@ for _, signal in pairs(config.Signals) do
                     -- deliberately face "backwards" relative to the route) and never gets a
                     -- state, and neither does anything only passed against its own facing.
                     local usedInserted = {}
+                    local touchedAlongRoute = {}
                     if route.classifySignal(entranceSignal[3]) == "inserted" then
                         usedInserted[entranceSignal[3]] = true
                     end
@@ -392,10 +435,17 @@ for _, signal in pairs(config.Signals) do
                             and (passedSignal.kind == "main" or passedSignal.kind == "inserted")
                             and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
                             applyMainSignalState(signalConfigByName[passed.name], signalGuiObjects[passed.name], chooseProceedState(passed.name, result.allStraight))
+                            touchedAlongRoute[passed.name] = true
                             if passedSignal.kind == "inserted" then
                                 usedInserted[passed.name] = true
                             end
                         end
+                    end
+                    -- Remember every non-entrance signal this route cleared, so cancelling
+                    -- the route (Shift+click the entrance, or manually setting it to Stuj)
+                    -- puts them all back to their own most-restrictive state too.
+                    if next(touchedAlongRoute) then
+                        activeRouteSignals[entranceSignal[3]] = touchedAlongRoute
                     end
 
                     -- Reset sibling Inserted signals (other tracks feeding the same shared
