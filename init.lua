@@ -6,10 +6,33 @@ local text = require("text")
 local controllers = require("controllers")
 local thread = require("thread")
 local screen = require("grapes.Screen")
+local unicode = require("unicode")
+local route = require("route")
 
 local SwitchTexts = {}
 local SignalTexts = {}
 local settingsWindow = nil
+
+local routeGraph = route.buildGraph(config)
+local routeModeActive = false
+local pendingEntrance = nil
+local cellObjects = {}
+local signalGuiObjects = {}
+local signalConfigByName = {}
+local activeRouteCells = {}
+
+local function cellKey(x, y)
+    return x .. "," .. y
+end
+
+local function highlightCells(cells, active)
+    for _, c in ipairs(cells) do
+        local entry = cellObjects[cellKey(c.x, c.y)]
+        if entry then
+            entry.obj.color = active and 0x19ED15 or entry.revertColor
+        end
+    end
+end
 
 local workspace = GUI.workspace()
 
@@ -17,6 +40,78 @@ workspace:addChild(GUI.panel(1, 1, workspace.width, workspace.height, 0x000000))
 
 workspace:addChild(GUI.label(1, 1, workspace.width, workspace.height, 0xFFFFFF, "Open Rail Management System"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_TOP))
 workspace:addChild(GUI.label(1, 1, workspace.width, workspace.height, 0xFFFFFF, "By Petsox and tpeterka1"):setAlignment(GUI.ALIGNMENT_HORIZONTAL_CENTER, GUI.ALIGNMENT_VERTICAL_BOTTOM))
+
+-- Signal state helpers (used by both manual clicks and automatic route building)
+local function startBlink(signal, signalTbl, blinkState, onColor, offColor)
+    local t
+    t = thread.create(function()
+        while true do
+            if not (controllers.Signals.getState(signalTbl[3]) == blinkState) then t:kill() end
+            signal.colors.default.text = onColor
+            signal.colors.pressed.text = onColor
+            workspace:draw()
+            if not (controllers.Signals.getState(signalTbl[3]) == blinkState) then t:kill() end
+            os.sleep(0.5)
+            signal.colors.default.text = offColor
+            signal.colors.pressed.text = offColor
+            workspace:draw()
+            if not (controllers.Signals.getState(signalTbl[3]) == blinkState) then t:kill() end
+            os.sleep(0.5)
+        end
+    end):resume()
+end
+
+local function setSignalStateGUI(signal, state, signalTbl)
+    signal.colors.default.text = 0xB2B2B2
+    signal.colors.pressed.text = 0xB2B2B2
+    ::signal::
+    if state == nil then return end
+    if state == "Stuj" then
+        signal.colors.default.text = 0xB2B2B2
+        signal.colors.pressed.text = 0xB2B2B2
+    elseif state == "Vystraha" then
+        signal.colors.default.text = 0x00FF00
+        signal.colors.pressed.text = 0x00FF00
+    elseif state == "Volno" then
+        signal.colors.default.text = 0x00FF00
+        signal.colors.pressed.text = 0x00FF00
+    elseif state == "PosunDov" then
+        signal.colors.default.text = 0xFFFFFF
+        signal.colors.pressed.text = 0xFFFFFF
+    elseif state == "PosunZak" then
+        signal.colors.default.text = 0xB2B2B2
+        signal.colors.pressed.text = 0xB2B2B2
+    elseif state == "PN" then
+        startBlink(signal, signalTbl, "PN", 0xFFFFFF, 0xB2B2B2)
+    elseif state == "OdNavDovJizdu" then
+        -- Inserted signal: "Departure Allowed" is a flashing white light.
+        startBlink(signal, signalTbl, "OdNavDovJizdu", 0xFFFFFF, 0x000000)
+    elseif string.sub(state, 1, 3) == "R40" or string.sub(state, 1, 3) == "R60" or string.sub(state, 1, 3) == "R80" then
+        signal.colors.default.text = 0xFFFF00
+        signal.colors.pressed.text = 0xFFFF00
+    elseif string.sub(state, 1, 4) == "Opak" then
+        state = string.sub(state, 5)
+        goto signal
+    end
+end
+
+-- Function: applyMainSignalState
+-- Description: Sets a Main signal's state on the controller, chains the expect signal, updates
+--              its GUI color, and (when set back to Stuj) releases any route it was holding.
+--              Shared by the manual state menu and automatic route building.
+local function applyMainSignalState(signal, signalObj, state)
+    controllers.Signals.setState(signal[3], state)
+    utils.sendStateToExpectSig(signal[3], state)
+    setSignalStateGUI(signalObj, state, signal)
+    if state == "Stuj" then
+        route.unlock(signal[3])
+        if activeRouteCells[signal[3]] then
+            highlightCells(activeRouteCells[signal[3]], false)
+            activeRouteCells[signal[3]] = nil
+        end
+    end
+    workspace:draw()
+end
 
 -- Draw exit button
 local exitBtn = workspace:addChild(GUI.label(155, 50, 6, 1, 0xFFFFFF, "[Exit]"))
@@ -29,7 +124,7 @@ exitBtn.eventHandler = function(workspace, object, event)
     end
 end
 
--- Draw settings 
+-- Draw settings
 local settBtn = workspace:addChild(GUI.label(1, 50, 10, 1, 0xFFFFFF, "[Settings]"))
 settBtn.eventHandler = function(workspace, object, event)
     if event == "touch" then
@@ -70,12 +165,35 @@ settBtn.eventHandler = function(workspace, object, event)
     end
 end
 
+-- Draw route mode toggle
+local routeBtn = workspace:addChild(GUI.label(12, 50, 10, 1, 0xFFFFFF, "[Route]"))
+routeBtn.eventHandler = function(workspace, object, event)
+    if event == "touch" then
+        routeModeActive = not routeModeActive
+        object.color = routeModeActive and 0x19ED15 or 0xFFFFFF
+        object.text = routeModeActive and "[Route:ON]" or "[Route]"
+        if pendingEntrance then
+            local entranceObj = signalGuiObjects[pendingEntrance[3]]
+            if entranceObj then
+                setSignalStateGUI(entranceObj, controllers.Signals.getState(pendingEntrance[3]), pendingEntrance)
+            end
+            pendingEntrance = nil
+        end
+        workspace:draw()
+    end
+end
+
 -- Import tracks
 for _, track in pairs(config.Tracks) do
     local newTrack = workspace:addChild(GUI.text(track[1], track[2], 0xB2B2B2, text.trim(track[3]) or ""))
     local text = newTrack.text
+    local revertColor = 0xB2B2B2
     if text == "⦗" or text == "⦘" or text == "︹" or text == "︺" then
         newTrack.color = 0x0000FF
+        revertColor = 0x0000FF
+    end
+    for i = 1, unicode.len(track[3] or "") do
+        cellObjects[cellKey(track[1] + i - 1, track[2])] = {obj = newTrack, revertColor = revertColor}
     end
 end
 
@@ -84,6 +202,7 @@ for _, switch in pairs(config.Switches) do
     -- Create switch button in layout
     local newSwitch = workspace:addChild(GUI.text(switch[1], switch[2], 0xB2B2B2, text.trim(switch[3]) or ""))
     newSwitch.state = false
+    cellObjects[cellKey(switch[1], switch[2])] = {obj = newSwitch, revertColor = 0xB2B2B2}
     newSwitch.eventHandler = function(workspace, object, event)
         if event == "touch" then
             -- When switch is clicked, we toggle the switch in the GUI and send the state to the controller
@@ -126,61 +245,82 @@ end
 -- Import signals
 local signalMenus = {}
 
-local function startPN(signal, signalTbl)
-    local t
-    t = thread.create(function()
-        while true do
-            if not (controllers.Signals.getState(signalTbl[3]) == "PN") then t:kill() end
-            signal.colors.default.text = 0xFFFFFF
-            signal.colors.pressed.text = 0xFFFFFF
-            workspace:draw()
-            if not (controllers.Signals.getState(signalTbl[3]) == "PN") then t:kill() end
-            os.sleep(0.5)
-            signal.colors.default.text = 0xB2B2B2
-            signal.colors.pressed.text = 0xB2B2B2
-            workspace:draw()
-            if not (controllers.Signals.getState(signalTbl[3]) == "PN") then t:kill() end
-            os.sleep(0.5)
-        end
-    end):resume()
-end
-
-local function setSignalStateGUI(signal, state, signalTbl)
-    signal.colors.default.text = 0xB2B2B2
-    signal.colors.pressed.text = 0xB2B2B2
-    ::signal::
-    if state == nil then return end
-    if state == "Stuj" then
-        signal.colors.default.text = 0xB2B2B2
-        signal.colors.pressed.text = 0xB2B2B2
-    elseif state == "Vystraha" then
-        signal.colors.default.text = 0x00FF00
-        signal.colors.pressed.text = 0x00FF00
-    elseif state == "Volno" then
-        signal.colors.default.text = 0x00FF00
-        signal.colors.pressed.text = 0x00FF00
-    elseif state == "PosunDov" then
-        signal.colors.default.text = 0xFFFFFF
-        signal.colors.pressed.text = 0xFFFFFF
-    elseif state == "PosunZak" then
-        signal.colors.default.text = 0xB2B2B2
-        signal.colors.pressed.text = 0xB2B2B2
-    elseif state == "PN" then
-        startPN(signal, signalTbl)
-    elseif string.sub(state, 1, 3) == "R40" or string.sub(state, 1, 3) == "R60" or string.sub(state, 1, 3) == "R80" then
-        signal.colors.default.text = 0xFFFF00
-        signal.colors.pressed.text = 0xFFFF00
-    elseif string.sub(state, 1, 4) == "Opak" then
-        state = string.sub(state, 5)
-        goto signal
-    end
-end
-
 for _, signal in pairs(config.Signals) do
     -- Create signal button in layout
     local newSignal = workspace:addChild(GUI.button(signal[1], signal[2], 1, 1, 0x000000, 0xB2B2B2, 0x000000, 0xB2B2B2, signal[4]))
     signalMenus[signal[3]] = false
+    signalGuiObjects[signal[3]] = newSignal
+    signalConfigByName[signal[3]] = signal
+    local isMainSignal = route.classifySignal(signal[3]) == "main"
     newSignal.onTouch = function()
+        -- Automatic route building: only for Main signals, only while Route Mode is on.
+        if routeModeActive and isMainSignal then
+            if not pendingEntrance then
+                -- First click: remember this signal as the pending route entrance.
+                pendingEntrance = signal
+                newSignal.colors.default.text = 0xFFFF00
+                newSignal.colors.pressed.text = 0xFFFF00
+                workspace:draw()
+            elseif pendingEntrance[3] == signal[3] then
+                -- Clicking the pending entrance again cancels the selection.
+                setSignalStateGUI(newSignal, controllers.Signals.getState(signal[3]), signal)
+                pendingEntrance = nil
+                workspace:draw()
+            else
+                -- Second click on a different Main signal: try to build the route.
+                local entranceSignal = pendingEntrance
+                local entranceObj = signalGuiObjects[entranceSignal[3]]
+                pendingEntrance = nil
+
+                local result = route.findPath(routeGraph, entranceSignal[3], signal[3])
+                if not result then
+                    GUI.alert("Mezi vybranými návěstidly nelze postavit cestu / No route exists between the selected signals")
+                    setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
+                elseif not route.tryLock(entranceSignal[3], result) then
+                    GUI.alert("Cesta koliduje s již postavenou cestou / Route conflicts with one already set")
+                    setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
+                else
+                    for switchName, icon in pairs(result.switches) do
+                        controllers.Switches.setActive(switchName, route.isCurveGlyph(icon))
+                    end
+                    activeRouteCells[entranceSignal[3]] = result.cells
+                    highlightCells(result.cells, true)
+
+                    -- Straight routes clear to Volno; routes diverging through a curved switch
+                    -- clear to the entrance signal's slowest available speed-restricted state.
+                    local chosenState = "Volno"
+                    if not result.allStraight then
+                        for _, validState in pairs(controllers.Signals.getValidStatesForSignal(entranceSignal[3])) do
+                            if string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80" then
+                                chosenState = validState
+                                break
+                            end
+                        end
+                    end
+                    applyMainSignalState(entranceSignal, entranceObj, chosenState)
+
+                    -- Stations sharing one departure signal across several tracks mark which
+                    -- track is in use with an Inserted (VS/VL) signal. Inserted signals don't
+                    -- share Main signals' state set (Volno/R40.../Stuj) -- they only support
+                    -- Zhas/All/Stuj/PosunDov/PosunZak/OdNavDovJizdu/StujPosunZak/StujPosunDov,
+                    -- so the used one gets "OdNavDovJizdu" (Departure Allowed) regardless of
+                    -- chosenState, and unused siblings go back to their own most-restrictive
+                    -- state, "StujPosunZak", not plain "Stuj".
+                    local usedInserted, siblingInserted = route.insertedSignalsFor(routeGraph, entranceSignal[3], result)
+                    if usedInserted and signalConfigByName[usedInserted] and signalGuiObjects[usedInserted] then
+                        applyMainSignalState(signalConfigByName[usedInserted], signalGuiObjects[usedInserted], "OdNavDovJizdu")
+                    end
+                    for _, siblingName in ipairs(siblingInserted) do
+                        if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
+                            applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
+                        end
+                    end
+                end
+                workspace:draw()
+            end
+            return
+        end
+
         -- When signal is clicked, we first check if the menu is already open
         if signalMenus[signal[3]] == false then
             -- If not, we create the menu
@@ -215,10 +355,7 @@ for _, signal in pairs(config.Signals) do
                             signalState.pressed = false
                         end
                         signalMenuState.pressed = true
-                        controllers.Signals.setState(signal[3], state)
-                        utils.sendStateToExpectSig(signal[3], state)
-                        setSignalStateGUI(newSignal, state, signal)
-                        workspace:draw()
+                        applyMainSignalState(signal, newSignal, state)
                     else
                         -- If it's an expect signal, we alert the user that the expect signal is controlled automatically
                         signalMenuState.pressed = false

@@ -3,6 +3,7 @@ local Config = require("config")
 local internet = require("internet")
 local json = require("json")
 local controllers = require("controllers")
+local route = require("route")
 
 -- Function: utils.calcSwitchTextPos
 -- Description: Calculate the position of the switch text
@@ -101,7 +102,7 @@ local crossingsConnected = controllers.isConnected("Crossings")
 -- Parameters: switch - table containing the switch data
 -- Returns: boolean
 utils.isSwitchDefaultCurve = function(switch)
-    return switch[3] == "╗" or switch[3] == "╝" or switch[3] == "╚" or switch[3] == "╔"
+    return route.isCurveGlyph(switch[3])
 end
 
 -- Function: utils.resetLayout

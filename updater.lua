@@ -1,7 +1,7 @@
 local shell = require("shell")
 local fs = require("filesystem")
 local repo = "https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/new-master/"
-local repoFiles = { "init.lua", "json.lua", "controllers.lua", "updater.lua", "utils.lua", "grapes/Color.lua", "grapes/Event.lua", "grapes/Filesystem.lua", "grapes/GUI.lua", "grapes/Image.lua", "grapes/Keyboard.lua", "grapes/Number.lua", "grapes/Paths.lua", "grapes/Screen.lua", "grapes/Text.lua" }
+local repoFiles = { "init.lua", "json.lua", "controllers.lua", "updater.lua", "utils.lua", "route.lua", "grapes/Color.lua", "grapes/Event.lua", "grapes/Filesystem.lua", "grapes/GUI.lua", "grapes/Image.lua", "grapes/Keyboard.lua", "grapes/Number.lua", "grapes/Paths.lua", "grapes/Screen.lua", "grapes/Text.lua" }
 local installLoc = "/home/orms/"
 
 shell.setWorkingDirectory(installLoc)
