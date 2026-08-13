@@ -348,8 +348,10 @@ for _, signal in pairs(config.Signals) do
     -- Inserted (VS/VL) signals are valid route endpoints too -- they mark a specific track
     -- at a station where several tracks share one Main departure signal, so a route can
     -- legitimately start or end at one (e.g. S -> VS1 to arrive on track 1, then VS1 -> S1-3
-    -- to depart from it). Only Shunting and Expect signals stay out of route building.
-    local isRouteEligible = signalKind == "main" or signalKind == "inserted"
+    -- to depart from it). Repeater (Sc/Lc, "Cestové návěstidlo") signals are dual-purpose --
+    -- they can stand on their own as a departure signal too. Only Shunting and Expect
+    -- signals stay out of route building.
+    local isRouteEligible = signalKind == "main" or signalKind == "inserted" or signalKind == "repeater"
     newSignal.onTouch = function(_, _, _, _, _, _, mouseButton)
         -- Right-click the entrance of an already-built route to cancel it (release the
         -- lock, unlock switches/crossings, clear the highlight) -- works regardless of
@@ -422,32 +424,54 @@ for _, signal in pairs(config.Signals) do
                     -- Set the entrance's own state.
                     applyMainSignalState(entranceSignal, entranceObj, chooseProceedState(entranceSignal[3], result.allStraight))
 
-                    -- Any OTHER Main/Inserted signal genuinely passed -- in its own facing
-                    -- direction -- along the route (e.g. a shared departure signal like
-                    -- S1-3, or an Inserted VL/VS marking which track is in use) also gets
-                    -- cleared. The clicked exit itself is a pure location marker (it may
-                    -- deliberately face "backwards" relative to the route) and never gets a
-                    -- state, and neither does anything only passed against its own facing.
+                    -- Any OTHER Main/Inserted/Repeater signal genuinely passed -- in its own
+                    -- facing direction -- along the route (e.g. a shared departure signal
+                    -- like S1-3, an Inserted VL/VS marking which track is in use, or a
+                    -- repeater "Cestové" signal dividing the block) also gets cleared. The
+                    -- clicked exit itself is a pure location marker (it may deliberately
+                    -- face "backwards" relative to the route) and never gets a state, and
+                    -- neither does anything only passed against its own facing.
+                    -- Repeater signals don't get their own independent aspect when something
+                    -- real follows them -- they echo "Opak" + that signal's reduced preview
+                    -- aspect instead, walked back-to-front so a chain of repeaters all echo
+                    -- the same real authority rather than nesting Opak-of-Opak. A repeater
+                    -- with nothing real after it (last thing before the exit) just stands on
+                    -- its own as a departure signal.
                     local usedInserted = {}
                     local touchedAlongRoute = {}
                     if route.classifySignal(entranceSignal[3]) == "inserted" then
                         usedInserted[entranceSignal[3]] = true
                     end
+
+                    local relevant = {}
                     for _, passed in ipairs(route.signalsAlongRoute(routeGraph, result)) do
                         local passedSignal = routeGraph.signalsByName[passed.name]
                         if passed.name ~= entranceSignal[3] and passed.name ~= signal[3]
                             and passed.travelDir == passedSignal.dir
-                            and (passedSignal.kind == "main" or passedSignal.kind == "inserted")
+                            and (passedSignal.kind == "main" or passedSignal.kind == "inserted" or passedSignal.kind == "repeater")
                             and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
-                            applyMainSignalState(signalConfigByName[passed.name], signalGuiObjects[passed.name], chooseProceedState(passed.name, result.allStraight))
-                            touchedAlongRoute[passed.name] = true
-                            if passedSignal.kind == "inserted" then
-                                usedInserted[passed.name] = true
-                            end
+                            relevant[#relevant + 1] = {name = passed.name, kind = passedSignal.kind}
+                        end
+                    end
+
+                    local carriedState = nil
+                    for i = #relevant, 1, -1 do
+                        local entry = relevant[i]
+                        local appliedState
+                        if entry.kind == "repeater" and carriedState then
+                            appliedState = "Opak" .. utils.simplifyStateForPreview(carriedState)
+                        else
+                            appliedState = chooseProceedState(entry.name, result.allStraight)
+                            carriedState = appliedState
+                        end
+                        applyMainSignalState(signalConfigByName[entry.name], signalGuiObjects[entry.name], appliedState)
+                        touchedAlongRoute[entry.name] = true
+                        if entry.kind == "inserted" then
+                            usedInserted[entry.name] = true
                         end
                     end
                     -- Remember every non-entrance signal this route cleared, so cancelling
-                    -- the route (Shift+click the entrance, or manually setting it to Stuj)
+                    -- the route (right-click the entrance, or manually setting it to Stuj)
                     -- puts them all back to their own most-restrictive state too.
                     if next(touchedAlongRoute) then
                         activeRouteSignals[entranceSignal[3]] = touchedAlongRoute

@@ -58,6 +58,8 @@ function route.classifySignal(name)
         return "expect"
     elseif prefix == "VS" or prefix == "VL" then
         return "inserted"
+    elseif prefix == "Sc" or prefix == "Lc" then
+        return "repeater"
     end
     return "main"
 end

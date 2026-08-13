@@ -137,36 +137,46 @@ utils.toggleCrossing = function(crossingName, lowered)
     controllers.Crossings.activate(crossingName, lowered)
 end
 
+-- Function: utils.simplifyStateForPreview
+-- Description: Maps any Main signal state down to the reduced aspect vocabulary used by
+--              preview/echo signals: Vystraha, Volno, Ocek40, Ocek60 or Ocek80. Shared by
+--              the "Pr" expect signal (sent as-is) and "Opak"-prefixed repeater signals
+--              (prefixed with "Opak" -- SignalState.java only defines OpakVolno/
+--              OpakVystraha/OpakOcek40/OpakOcek60/OpakOcek80/OpakOcek100, so only this
+--              reduced set of results is ever valid to prefix).
+-- Parameters: state - the state of the signal being echoed
+-- Returns: string
+utils.simplifyStateForPreview = function(state)
+    if state == "Stuj" then
+        return "Vystraha"
+    elseif state == "PN" then
+        return "Vystraha"
+    elseif state == "Vystraha" then
+        return "Volno"
+    elseif state == "Volno" then
+        return "Volno"
+    elseif string.sub(state, 1, 3) == "R40" then
+        return "Ocek40"
+    elseif string.sub(state, 1, 3) == "R60" then
+        return "Ocek60"
+    elseif string.sub(state, 1, 3) == "R80" then
+        return "Ocek80"
+    elseif string.sub(state, 1, 4) == "Ocek" then
+        return "Volno"
+    elseif string.sub(state, 1, 4) == "Opak" then
+        return string.sub(state, 5)
+    else
+        return "Vystraha"
+    end
+end
+
 -- Function: utils.sendStateToExpectSig
 -- Description: Sends the state of the signal to the expect signal
 -- Parameters: signalName - the name of the signal
 --             state - the state of the signal
 utils.sendStateToExpectSig = function(signalName, state)
     if not signalsConnected then return end
-
-    if state == "Stuj" then
-        state = "Vystraha"
-    elseif state == "PN" then
-        state = "Vystraha"
-    elseif state == "Vystraha" then
-        state = "Volno"
-    elseif state == "Volno" then
-        state = "Volno"
-    elseif string.sub(state, 1, 3) == "R40" then
-        state = "Ocek40"
-    elseif string.sub(state, 1, 3) == "R60" then
-        state = "Ocek60"
-    elseif string.sub(state, 1, 3) == "R80" then
-        state = "Ocek80"
-    elseif state.sub(state, 1, 4) == "Ocek" then
-        state = "Volno"
-    elseif state.sub(state, 1, 4) == "Opak" then
-        state = state.sub(state, 5)
-    else
-        state = "Vystraha"
-    end
-
-    controllers.Signals.setState("Pr" .. signalName, state)
+    controllers.Signals.setState("Pr" .. signalName, utils.simplifyStateForPreview(state))
 end
 
 -- Simple shallow copy of a table
