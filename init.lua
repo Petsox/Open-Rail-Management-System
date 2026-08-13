@@ -404,8 +404,14 @@ for _, signal in pairs(config.Signals) do
 
                     for crossingName in pairs(result.crossings) do
                         controllers.Crossings.activate(crossingName, true)
+                        -- Same as switches: route-activated crossings bypass their own click
+                        -- handler, so sync the GUI (lowered look, matching a manual toggle)
+                        -- here too, not just lock it.
                         for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
                             entry.obj.locked = true
+                            entry.obj.state = true
+                            entry.obj.color = 0xFF0000
+                            entry.obj.text = entry.cfg[4]
                         end
                     end
                     activeRouteCrossings[entranceSignal[3]] = result.crossings
