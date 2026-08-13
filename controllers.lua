@@ -1,65 +1,38 @@
 local component = require("component")
 
-local controllerNames = {}
-local controllerAdrs = {}
-
-for address, name in component.list("controller", false) do
-    table.insert(controllerNames, component.proxy(component.get(address)).getControllerName())
-    table.insert(controllerAdrs, component.get(address))
-end
-
-function table_contains(tbl, x)
-    found = false
-    for _, v in pairs(tbl) do
-        if v == x then
-            found = true
-        end
-    end
-    return found
-end
-
-function findIndexInTable(table, x)
-    for i, value in ipairs(table) do
-        if value == x then
-            return i
+local function findControllerAddress(componentType, name)
+    for address in component.list(componentType, true) do
+        if component.proxy(address).getControllerName() == name then
+            return address
         end
     end
     return nil
 end
 
-local function getAddress(name)
-    if table_contains(controllerNames, name) then
-        for var = #controllerNames, 1, -1 do
-            if (controllerNames[var] == name) then
-                return controllerAdrs[var]
-            end
-        end
-    else
-        table.insert(controllerNames, name)
-        table.insert(controllerAdrs, "NotConnected")
-        return "NotConnected"
+local controllers = {}
+local addresses = {}
+
+local function connect(componentType, name)
+    local address = findControllerAddress(componentType, name)
+    addresses[name] = address
+    if address then
+        controllers[name] = component.proxy(address)
     end
 end
 
-local controllers = {}
+connect("signalcraft_controller", "Signals")                    -- Signals (Digital Controller)
+connect("signalcraft_universal_controller", "Switches")         -- Switches (Universal Digital Controller)
+connect("signalcraft_crossing_controller", "Crossings")         -- Crossings (Digital Crossing Controller)
 
 function controllers.isConnected(name)
-    local var = findIndexInTable(controllerNames, name)
-    if (controllerAdrs[var] == "NotConnected") then
-        return false
-    end
-    return true
+    return addresses[name] ~= nil
 end
 
 function controllers.printTable()
-    for var = #controllerNames, 1, -1 do
-        print(controllerNames[var])
-        print(controllerAdrs[var])
+    for name, address in pairs(addresses) do
+        print(name)
+        print(address or "NotConnected")
     end
 end
-
-controllers.Signals = component.proxy(getAddress("Signals"))     -- Signals
-controllers.Switches = component.proxy(getAddress("Switches"))   -- Switches
-controllers.Crossings = component.proxy(getAddress("Crossings")) -- Crossings
 
 return controllers

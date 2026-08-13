@@ -12,10 +12,8 @@ This project uses the [LibGrapes](https://github.com/ApelSoftCorp/LibGrapes) lib
 Needed Mods:
 
   [OpenComputers](https://www.curseforge.com/minecraft/mc-mods/opencomputers)
-  
-  [Computronics](https://github.com/Petsox/Computronics_Ctyrk4_Edition/tree/master)
 
-   - [AsieLib](https://wiki.vexatos.com/wiki:computronics)
+  [SignalCraft-Integrations](https://github.com/Petsox/SignalCraft-Integrations)
 
   [Railcraft](https://github.com/Petsox/Railcraft-mc-1.7.10)
   
@@ -41,7 +39,7 @@ Then, install OpenOS using the OpenOS floppy and run the following command, whic
  	pastebin run -f iQAC8EfE
 </br>
 
-Make two digital controllers (one named "Crossings" and one named "Switches") and a digital controller from SignalCraft, named "Signals", connect them to the computer with a cable from the top
+Make a Digital Crossing Controller named "Crossings", a Universal Digital Controller named "Switches" and a Digital Controller named "Signals" (all from SignalCraft-Integrations), and connect them to the computer with a cable from the top
 
 Then insert your ORMS layout into config.lua generated using the tool below.
 

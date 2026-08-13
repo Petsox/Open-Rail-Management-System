@@ -89,7 +89,7 @@ for _, switch in pairs(config.Switches) do
             -- When switch is clicked, we toggle the switch in the GUI and send the state to the controller
             object.state = not object.state
             object.text = object.state and switch[4] or switch[3]
-            utils.toggleSwitch(switch[5])
+            utils.toggleSwitch(switch, object.state)
             workspace:draw()
         end
     end
@@ -117,7 +117,7 @@ for _, crossing in pairs(config.Crossings) do
                 object.color = 0xB2B2B2
             end
             object.text = object.state and crossing[4] or crossing[3]
-            utils.toggleCrossing(crossing[5])
+            utils.toggleCrossing(crossing[5], object.state)
             workspace:draw()
         end
     end

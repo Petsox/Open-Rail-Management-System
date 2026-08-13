@@ -95,41 +95,45 @@ local switchesConnected = controllers.isConnected("Switches")
 local signalsConnected  = controllers.isConnected("Signals")
 local crossingsConnected = controllers.isConnected("Crossings")
 
+-- Function: utils.isSwitchDefaultCurve
+-- Description: Whether a switch's default (untoggled) layout icon is a curve.
+--              The Universal Digital Controller's activate() is true for this default position.
+-- Parameters: switch - table containing the switch data
+-- Returns: boolean
+utils.isSwitchDefaultCurve = function(switch)
+    return switch[3] == "╗" or switch[3] == "╝" or switch[3] == "╚" or switch[3] == "╔"
+end
+
 -- Function: utils.resetLayout
--- Description: Resets the switches and signals according to the default layout
+-- Description: Resets the switches, crossings and signals according to the default layout
 utils.resetLayout = function()
     if switchesConnected then
         for _, switch in pairs(Config.Switches) do
-            if switch[3] == "╗" or switch[3] == "╝" or switch[3] == "╚" or switch[3] == "╔" or switch[3] == "╚" then
-                controllers.Switches.setAspect(switch[5], 1)
-            else
-                controllers.Switches.setAspect(switch[5], 5)
-            end
+            controllers.Switches.setActive(switch[5], utils.isSwitchDefaultCurve(switch))
         end
     end
-    
-    if signalsConnected then controllers.Signals.setEveryState("Stuj") end
+
+    if crossingsConnected then controllers.Crossings.activateAll(false) end
+
+    if signalsConnected then controllers.Signals.setMostRestrictiveOnAll() end
 end
 
 -- Function: utils.toggleSwitch
--- Description: Toggles the switch
--- Parameters: switchName - the name of the switch
-utils.toggleSwitch = function(switchName)
+-- Description: Sends the switch's new toggled state to the controller
+-- Parameters: switch - table containing the switch data
+--             toggled - whether the switch is now showing its non-default icon
+utils.toggleSwitch = function(switch, toggled)
     if not switchesConnected then return end
-    if controllers.Switches.getAspect(switchName) == 1 then
-        controllers.Switches.setAspect(switchName, 5)
-    else
-        controllers.Switches.setAspect(switchName, 1)
-    end
+    controllers.Switches.setActive(switch[5], toggled ~= utils.isSwitchDefaultCurve(switch))
 end
 
-utils.toggleCrossing = function(switchName)
+-- Function: utils.toggleCrossing
+-- Description: Sends the crossing's new state to the controller
+-- Parameters: crossingName - the name of the crossing
+--             lowered - true lowers the barriers, false raises them
+utils.toggleCrossing = function(crossingName, lowered)
     if not crossingsConnected then return end
-    if controllers.Crossings.getAspect(switchName) == 5 then
-        controllers.Crossings.setAspect(switchName, 1)
-    else
-        controllers.Crossings.setAspect(switchName, 5)
-    end
+    controllers.Crossings.activate(crossingName, lowered)
 end
 
 -- Function: utils.sendStateToExpectSig
