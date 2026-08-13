@@ -194,7 +194,8 @@ local function search(graph, x, y, cameFromDir, exit, visited, switchChoices, pa
 end
 
 -- Finds a route from entranceName to exitName. Returns nil if none exists, otherwise
--- {switches = {[switchName] = requiredIconGlyph, ...}, cells = {{x,y}, ...}, allStraight = bool}.
+-- {switches = {[switchName] = requiredIconGlyph, ...}, crossings = {[crossingName] = true, ...},
+--  cells = {{x,y}, ...}, allStraight = bool}.
 function route.findPath(graph, entranceName, exitName)
     local entrance = graph.signalsByName[entranceName]
     local exit = graph.signalsByName[exitName]
@@ -220,7 +221,15 @@ function route.findPath(graph, entranceName, exitName)
         end
     end
 
-    return {switches = switchChoices, cells = path, allStraight = allStraight}
+    local crossings = {}
+    for _, c in ipairs(path) do
+        local cell = graph.cells[key(c.x, c.y)]
+        if cell and cell.kind == "crossing" then
+            crossings[cell.name] = true
+        end
+    end
+
+    return {switches = switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
 end
 
 -- Stations that share one departure signal across several tracks (e.g. "L1-3" serving

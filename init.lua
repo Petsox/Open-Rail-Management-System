@@ -20,6 +20,7 @@ local cellObjects = {}
 local signalGuiObjects = {}
 local signalConfigByName = {}
 local activeRouteCells = {}
+local crossingObjectsByName = {}
 
 local function cellKey(x, y)
     return x .. "," .. y
@@ -226,17 +227,22 @@ for _, crossing in pairs(config.Crossings) do
     -- Create crossing button in layout
     local newcrossing = workspace:addChild(GUI.text(crossing[1], crossing[2], 0xB2B2B2, text.trim(crossing[3]) or ""))
     newcrossing.state = false
+    -- Multi-track crossings share one name across several (x,y) entries (one per track it
+    -- protects); keep every GUI object for that name in sync so clicking any one of them
+    -- updates them all, not just the one that was touched.
+    crossingObjectsByName[crossing[5]] = crossingObjectsByName[crossing[5]] or {}
+    table.insert(crossingObjectsByName[crossing[5]], {obj = newcrossing, cfg = crossing})
     newcrossing.eventHandler = function(workspace, object, event)
         if event == "touch" then
-            -- When crossing is clicked, we toggle the crossing in the GUI and send the state to the controller
-            object.state = not object.state
-            if object.state then
-                object.color = 0xFF0000
-            else
-                object.color = 0xB2B2B2
+            -- When crossing is clicked, we toggle the crossing (and any sibling sharing its
+            -- name) in the GUI and send the state to the controller
+            local newState = not object.state
+            for _, entry in ipairs(crossingObjectsByName[crossing[5]]) do
+                entry.obj.state = newState
+                entry.obj.color = newState and 0xFF0000 or 0xB2B2B2
+                entry.obj.text = newState and entry.cfg[4] or entry.cfg[3]
             end
-            object.text = object.state and crossing[4] or crossing[3]
-            utils.toggleCrossing(crossing[5], object.state)
+            utils.toggleCrossing(crossing[5], newState)
             workspace:draw()
         end
     end
@@ -251,10 +257,15 @@ for _, signal in pairs(config.Signals) do
     signalMenus[signal[3]] = false
     signalGuiObjects[signal[3]] = newSignal
     signalConfigByName[signal[3]] = signal
-    local isMainSignal = route.classifySignal(signal[3]) == "main"
+    local signalKind = route.classifySignal(signal[3])
+    -- Inserted (VS/VL) signals are valid route endpoints too -- they mark a specific track
+    -- at a station where several tracks share one Main departure signal, so a route can
+    -- legitimately start or end at one (e.g. S -> VS1 to arrive on track 1, then VS1 -> S1-3
+    -- to depart from it). Only Shunting and Expect signals stay out of route building.
+    local isRouteEligible = signalKind == "main" or signalKind == "inserted"
     newSignal.onTouch = function()
-        -- Automatic route building: only for Main signals, only while Route Mode is on.
-        if routeModeActive and isMainSignal then
+        -- Automatic route building: only for Main/Inserted signals, only while Route Mode is on.
+        if routeModeActive and isRouteEligible then
             if not pendingEntrance then
                 -- First click: remember this signal as the pending route entrance.
                 pendingEntrance = signal
@@ -283,21 +294,31 @@ for _, signal in pairs(config.Signals) do
                     for switchName, icon in pairs(result.switches) do
                         controllers.Switches.setActive(switchName, route.isCurveGlyph(icon))
                     end
+                    for crossingName in pairs(result.crossings) do
+                        controllers.Crossings.activate(crossingName, true)
+                    end
                     activeRouteCells[entranceSignal[3]] = result.cells
                     highlightCells(result.cells, true)
 
-                    -- Straight routes clear to Volno; routes diverging through a curved switch
-                    -- clear to the entrance signal's slowest available speed-restricted state.
-                    local chosenState = "Volno"
-                    if not result.allStraight then
-                        for _, validState in pairs(controllers.Signals.getValidStatesForSignal(entranceSignal[3])) do
-                            if string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80" then
-                                chosenState = validState
-                                break
+                    if route.classifySignal(entranceSignal[3]) == "inserted" then
+                        -- The clicked entrance is itself an Inserted signal (e.g. departing
+                        -- from a specific track): it only supports the Inserted-signal state
+                        -- set, not Volno/R40..., so it always clears to "Departure Allowed".
+                        applyMainSignalState(entranceSignal, entranceObj, "OdNavDovJizdu")
+                    else
+                        -- Straight routes clear to Volno; routes diverging through a curved
+                        -- switch clear to the entrance signal's slowest speed-restricted state.
+                        local chosenState = "Volno"
+                        if not result.allStraight then
+                            for _, validState in pairs(controllers.Signals.getValidStatesForSignal(entranceSignal[3])) do
+                                if string.sub(validState, 1, 3) == "R40" or string.sub(validState, 1, 3) == "R60" or string.sub(validState, 1, 3) == "R80" then
+                                    chosenState = validState
+                                    break
+                                end
                             end
                         end
+                        applyMainSignalState(entranceSignal, entranceObj, chosenState)
                     end
-                    applyMainSignalState(entranceSignal, entranceObj, chosenState)
 
                     -- Stations sharing one departure signal across several tracks mark which
                     -- track is in use with an Inserted (VS/VL) signal. Inserted signals don't
