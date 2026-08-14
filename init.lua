@@ -210,6 +210,45 @@ local function chooseProceedState(signalName, allStraight, downstreamState, down
     return suffix
 end
 
+-- Function: findSpeedPrefixedState
+-- Description: Searches signalName's valid states for one that's exactly suffix prefixed
+--              with a speed restriction (R30/R40/R60/R80/R100), e.g. suffix "OpakOcek40"
+--              matches "R40OpakOcek40". Returns the exact valid-state string (correct
+--              casing) or nil if this signal has no such combined state.
+local SPEED_PREFIXES = {"r30", "r40", "r60", "r80", "r100"}
+local function findSpeedPrefixedState(signalName, suffix)
+    local lowerSuffix = string.lower(suffix)
+    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+        local lowerState = string.lower(validState)
+        for _, prefix in ipairs(SPEED_PREFIXES) do
+            if string.sub(lowerState, 1, #prefix) == prefix and string.sub(lowerState, #prefix + 1) == lowerSuffix then
+                return validState
+            end
+        end
+    end
+    return nil
+end
+
+-- Function: chooseRepeaterEchoState
+-- Description: Picks what a repeater signal (Sc/Lc) shows when echoing the state of a real
+--              signal further along the route (carriedState). Starts from the same reduced
+--              aspect "Pr" expect signals use (utils.simplifyStateForPreview), then -- like
+--              chooseProceedState -- prefers a combined state that also carries an R-prefix
+--              when THIS repeater's own incoming route is curved (allStraight false), e.g.
+--              "R40OpakOcek40" instead of plain "OpakOcek40", falling back to the plain form
+--              when this repeater has no such combined state (not every speed has one, e.g.
+--              there's no "R40OpakVolno").
+local function chooseRepeaterEchoState(signalName, allStraight, carriedState)
+    local plain = "Opak" .. utils.simplifyStateForPreview(carriedState)
+    if not allStraight then
+        local prefixed = findSpeedPrefixedState(signalName, plain)
+        if prefixed then
+            return prefixed
+        end
+    end
+    return plain
+end
+
 -- Function: chooseRestrictiveState
 -- Description: The counterpart of chooseProceedState for releasing a route -- picks each
 --              signal's own most-restrictive state (Inserted signals: "StujPosunZak" by
@@ -330,7 +369,7 @@ local function applyRouteChainStates(entranceSignal, entranceObj, relevant, allS
         local entry = relevant[i]
         local appliedState
         if entry.kind == "repeater" and carriedName then
-            appliedState = "Opak" .. utils.simplifyStateForPreview(carriedState)
+            appliedState = chooseRepeaterEchoState(entry.name, allStraight, carriedState)
         else
             appliedState = chooseProceedState(entry.name, allStraight, carriedState, carriedName)
             carriedState = appliedState
@@ -344,7 +383,7 @@ local function applyRouteChainStates(entranceSignal, entranceObj, relevant, allS
     -- ones strictly in between.
     local entranceState
     if route.classifySignal(entranceSignal[3]) == "repeater" and carriedName then
-        entranceState = "Opak" .. utils.simplifyStateForPreview(carriedState)
+        entranceState = chooseRepeaterEchoState(entranceSignal[3], allStraight, carriedState)
     else
         entranceState = chooseProceedState(entranceSignal[3], allStraight, carriedState, carriedName)
     end
