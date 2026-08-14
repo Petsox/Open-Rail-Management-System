@@ -282,15 +282,19 @@ function route.signalsAlongRoute(graph, result)
     return found
 end
 
--- Starting just past (x, y) and walking forward in travelDir, finds the first Main/
--- Inserted/Repeater signal reached facing that same direction of travel -- any signal that
--- carries a real state a following signal could react to (shunting/expect signals are just
--- pass-through markers, and a signal facing the opposite way is for the other direction, so
--- both are skipped, not stopped at). Returns name = nil when no such signal is reachable;
--- the second return distinguishes WHY: true if the walk hit a switch cell first (the next
--- signal depends on a position nothing here has set, so it's genuinely ambiguous which one
--- comes next), false if the walk ran off the graph entirely (a real dead end/terminus --
--- there's nothing further to be cautious about).
+-- Checks (x, y) itself first (before walking anywhere), then walks forward in travelDir,
+-- finds the first Main/Inserted/Repeater signal reached facing that same direction of
+-- travel -- any signal that carries a real state a following signal could react to
+-- (shunting/expect signals are just pass-through markers, and a signal facing the opposite
+-- way is for the other direction, so both are skipped, not stopped at). Checking the
+-- starting position itself matters for a route's own exit: if it's approached facing the
+-- SAME way it's posted, it IS the next real authority (nothing needs to be found beyond
+-- it) -- only a "backwards" exit (used as a pure location marker, e.g. selecting a track by
+-- its Inserted signal) needs the walk to continue past it. Returns name = nil when no such
+-- signal is reachable; the second return distinguishes WHY: true if the walk hit a switch
+-- cell first (the next signal depends on a position nothing here has set, so it's genuinely
+-- ambiguous which one comes next), false if the walk ran off the graph entirely (a real
+-- dead end/terminus -- there's nothing further to be cautious about).
 function route.nextSignal(graph, x, y, travelDir)
     if not travelDir then
         return nil, false
@@ -301,6 +305,21 @@ function route.nextSignal(graph, x, y, travelDir)
         local k = key(sig.x, sig.y)
         byPosition[k] = byPosition[k] or {}
         table.insert(byPosition[k], name)
+    end
+
+    local function signalAt(cx, cy, dir)
+        for _, name in ipairs(byPosition[key(cx, cy)] or {}) do
+            local sig = graph.signalsByName[name]
+            if sig.dir == dir and (sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater") then
+                return name
+            end
+        end
+        return nil
+    end
+
+    local startMatch = signalAt(x, y, travelDir)
+    if startMatch then
+        return startMatch, false
     end
 
     local visited = {}
@@ -322,11 +341,9 @@ function route.nextSignal(graph, x, y, travelDir)
             return nil, true
         end
 
-        for _, name in ipairs(byPosition[k] or {}) do
-            local sig = graph.signalsByName[name]
-            if sig.dir == dir and (sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater") then
-                return name, false
-            end
+        local found = signalAt(cx, cy, dir)
+        if found then
+            return found, false
         end
 
         local entrySide = OPPOSITE[dir]
