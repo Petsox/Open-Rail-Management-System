@@ -282,15 +282,18 @@ function route.signalsAlongRoute(graph, result)
     return found
 end
 
--- Starting just past (x, y) and walking forward in travelDir, finds the first Main-kind
--- signal reached facing that same direction of travel -- used to let a route's last signal
--- react to whatever comes after it, like a real distant signal would. Returns nil (no
--- lookahead available) if the walk runs off the graph or hits a switch cell before finding
--- one: a switch means the next signal depends on a position nothing here has set, so which
--- signal actually comes next is ambiguous.
-function route.nextMainSignal(graph, x, y, travelDir)
+-- Starting just past (x, y) and walking forward in travelDir, finds the first Main/
+-- Inserted/Repeater signal reached facing that same direction of travel -- any signal that
+-- carries a real state a following signal could react to (shunting/expect signals are just
+-- pass-through markers, and a signal facing the opposite way is for the other direction, so
+-- both are skipped, not stopped at). Returns name = nil when no such signal is reachable;
+-- the second return distinguishes WHY: true if the walk hit a switch cell first (the next
+-- signal depends on a position nothing here has set, so it's genuinely ambiguous which one
+-- comes next), false if the walk ran off the graph entirely (a real dead end/terminus --
+-- there's nothing further to be cautious about).
+function route.nextSignal(graph, x, y, travelDir)
     if not travelDir then
-        return nil
+        return nil, false
     end
 
     local byPosition = {}
@@ -307,19 +310,22 @@ function route.nextMainSignal(graph, x, y, travelDir)
         cx, cy = cx + vec.dx, cy + vec.dy
         local k = key(cx, cy)
         if visited[k] then
-            return nil
+            return nil, false
         end
         visited[k] = true
 
         local cell = graph.cells[k]
-        if not cell or cell.kind == "switch" then
-            return nil
+        if not cell then
+            return nil, false
+        end
+        if cell.kind == "switch" then
+            return nil, true
         end
 
         for _, name in ipairs(byPosition[k] or {}) do
             local sig = graph.signalsByName[name]
-            if sig.kind == "main" and sig.dir == dir then
-                return name
+            if sig.dir == dir and (sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater") then
+                return name, false
             end
         end
 
@@ -335,7 +341,7 @@ function route.nextMainSignal(graph, x, y, travelDir)
             end
         end
         if not nextDir then
-            return nil
+            return nil, false
         end
         dir = nextDir
     end
