@@ -167,21 +167,19 @@ local function resolveNextSignal(x, y, travelDir)
     return nil, ambiguous and "Stuj" or "Volno"
 end
 
--- Function: findSpeedPrefixedState
--- Description: Searches signalName's valid states for one that's exactly suffix prefixed
---              with a speed restriction (R30/R40/R60/R80/R100), e.g. suffix "OpakOcek40"
---              matches "R40OpakOcek40". Returns the exact valid-state string (correct
---              casing) or nil if this signal has no such combined state.
-local SPEED_PREFIXES = {"r30", "r40", "r60", "r80", "r100"}
-local function findSpeedPrefixedState(signalName, suffix)
-    local lowerSuffix = string.lower(suffix)
-    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
-        local lowerState = string.lower(validState)
-        for _, prefix in ipairs(SPEED_PREFIXES) do
-            if string.sub(lowerState, 1, #prefix) == prefix and string.sub(lowerState, #prefix + 1) == lowerSuffix then
-                return validState
-            end
-        end
+-- Function: defaultCurveState
+-- Description: The R-prefix used for a curved segment when no physical speed sign settles
+--              it (see chooseProceedState/chooseRepeaterEchoState). Czech AZD practice
+--              defaults an ordinary diverging switch to 40 km/h unless a sign explicitly
+--              calls for something else, so this always tries "R40"+suffix specifically --
+--              never guesses at R30/R60/R80/R100, which have no real connection to this
+--              particular switch and would just be whichever one happened to be listed
+--              first among this signal's valid states. Falls back to nil (no prefix at all)
+--              if this signal doesn't support R40 for this suffix.
+local function defaultCurveState(signalName, suffix)
+    local candidate = "R40" .. suffix
+    if hasValidState(signalName, candidate) then
+        return candidate
     end
     return nil
 end
@@ -231,7 +229,7 @@ local function chooseProceedState(signalName, allStraight, downstreamState, down
     end
 
     if not allStraight then
-        local prefixed = findSpeedPrefixedState(signalName, suffix)
+        local prefixed = defaultCurveState(signalName, suffix)
         if prefixed then
             return prefixed
         end
@@ -243,15 +241,15 @@ end
 -- Description: Picks what a repeater signal (Sc/Lc) shows when echoing the state of a real
 --              signal further along the route (carriedState). Starts from the same reduced
 --              aspect "Pr" expect signals use (utils.simplifyStateForPreview), then -- like
---              chooseProceedState -- prefers a combined state that also carries an R-prefix
---              when THIS repeater's own incoming route is curved (allStraight false), e.g.
---              "R40OpakOcek40" instead of plain "OpakOcek40", falling back to the plain form
---              when this repeater has no such combined state (not every speed has one, e.g.
---              there's no "R40OpakVolno").
+--              chooseProceedState -- defaults to also carrying "R40" when THIS repeater's own
+--              incoming segment is curved (allStraight false), e.g. "R40OpakOcek40" instead
+--              of plain "OpakOcek40", falling back to the plain form when this repeater has
+--              no such combined state (not every speed has one, e.g. there's no
+--              "R40OpakVolno").
 local function chooseRepeaterEchoState(signalName, allStraight, carriedState)
     local plain = "Opak" .. utils.simplifyStateForPreview(carriedState)
     if not allStraight then
-        local prefixed = findSpeedPrefixedState(signalName, plain)
+        local prefixed = defaultCurveState(signalName, plain)
         if prefixed then
             return prefixed
         end
