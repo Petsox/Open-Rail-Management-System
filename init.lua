@@ -198,6 +198,9 @@ local function chooseProceedState(signalName, allStraight, downstreamState, down
         local lowerSuffix = string.lower(suffix)
         for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
             local lowerState = string.lower(validState)
+            if string.sub(lowerState, 1, 4) == "r100" and string.sub(lowerState, 5) == lowerSuffix then
+                return validState
+            end
             local prefix = string.sub(lowerState, 1, 3)
             if (prefix == "r40" or prefix == "r60" or prefix == "r80") and string.sub(lowerState, 4) == lowerSuffix then
                 return validState

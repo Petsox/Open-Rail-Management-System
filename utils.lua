@@ -139,11 +139,13 @@ end
 
 -- Function: utils.simplifyStateForPreview
 -- Description: Maps any Main signal state down to the reduced aspect vocabulary used by
---              preview/echo signals: Vystraha, Volno, Ocek40, Ocek60 or Ocek80. Shared by
---              the "Pr" expect signal (sent as-is) and "Opak"-prefixed repeater signals
---              (prefixed with "Opak" -- SignalState.java only defines OpakVolno/
+--              preview/echo signals: Vystraha, Volno, Ocek40, Ocek60, Ocek80 or Ocek100.
+--              Shared by the "Pr" expect signal (sent as-is) and "Opak"-prefixed repeater
+--              signals (prefixed with "Opak" -- SignalState.java only defines OpakVolno/
 --              OpakVystraha/OpakOcek40/OpakOcek60/OpakOcek80/OpakOcek100, so only this
---              reduced set of results is ever valid to prefix).
+--              reduced set of results is ever valid to prefix). R30 has no Ocek30
+--              counterpart in SignalState.java, so it falls through to the Vystraha default
+--              same as any other unrecognized state.
 -- Parameters: state - the state of the signal being echoed
 -- Returns: string
 utils.simplifyStateForPreview = function(state)
@@ -155,6 +157,8 @@ utils.simplifyStateForPreview = function(state)
         return "Volno"
     elseif state == "Volno" then
         return "Volno"
+    elseif string.sub(state, 1, 4) == "R100" then
+        return "Ocek100"
     elseif string.sub(state, 1, 3) == "R40" then
         return "Ocek40"
     elseif string.sub(state, 1, 3) == "R60" then
