@@ -26,16 +26,19 @@ local activeRouteSignals = {}
 local crossingObjectsByName = {}
 local switchGuiObjects = {}
 
--- Reactive chaining: for a built route, activeRouteRelevant/activeRouteAllStraight/
+-- Reactive chaining: for a built route, activeRouteRelevant/activeRouteResult/
 -- activeRouteNextName remember everything needed to recompute its whole chain of states
--- again later (not just at build time) -- entranceName -> {name=,kind=} list in path order,
--- the route's own straight/curved flag, and the name of whatever real signal was found just
--- beyond its exit (or nil). dependents[signalName] is the reverse index: which entrance
--- routes currently have their chain depending on signalName's live state, so that whenever
--- ANY signal's state changes (applyMainSignalState), everything chained off it can be
--- recomputed and reapplied too -- not just at the moment a route is built.
+-- again later (not just at build time) -- entranceName -> {name=,kind=,index=} list in path
+-- order, the route's own findPath result (cells/switches -- kept whole, not just
+-- allStraight, so each signal's OWN segment curvature can be checked via
+-- route.segmentStraight instead of the route's aggregate straight/curved flag), and the
+-- name of whatever real signal was found just beyond its exit (or nil). dependents[signalName]
+-- is the reverse index: which entrance routes currently have their chain depending on
+-- signalName's live state, so that whenever ANY signal's state changes
+-- (applyMainSignalState), everything chained off it can be recomputed and reapplied too --
+-- not just at the moment a route is built.
 local activeRouteRelevant = {}
-local activeRouteAllStraight = {}
+local activeRouteResult = {}
 local activeRouteNextName = {}
 local activeRouteNextFallback = {}
 local dependents = {}
@@ -164,52 +167,6 @@ local function resolveNextSignal(x, y, travelDir)
     return nil, ambiguous and "Stuj" or "Volno"
 end
 
--- Function: chooseProceedState
--- Description: Picks the "route is set, proceed" state for a signal. VS/VL Inserted signals
---              always use "OdNavDovJizdu" (checked by name -- faster than querying the
---              controller, and sidesteps the casing quirk above). Other signals are asked
---              what they actually support: some shared departure signals (like "S1-3") also
---              use "OdNavDovJizdu" instead of Volno/R40...
---              downstreamState/downstreamName describe whatever signal comes right after
---              this one (see resolveNextSignal) -- like a real distant signal, this one
---              shows a Vystraha-family aspect if that next signal's state is restrictive,
---              otherwise a Volno-family aspect. The speed prefix prefers a physical speed
---              sign posted at the next signal (getSpeedSignText) over this route's own
---              straight/curved shape, falling back to the latter when there's no sign or
---              this signal can't show that particular speed.
-local function chooseProceedState(signalName, allStraight, downstreamState, downstreamName)
-    if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
-        return "OdNavDovJizdu"
-    end
-
-    local suffix = isStateRestrictive(downstreamState) and "Vystraha" or "Volno"
-
-    if downstreamName then
-        local hasSign, signText = controllers.Signals.getSpeedSignText(downstreamName)
-        if hasSign then
-            local candidate = "R" .. signText .. suffix
-            if hasValidState(signalName, candidate) then
-                return candidate
-            end
-        end
-    end
-
-    if not allStraight then
-        local lowerSuffix = string.lower(suffix)
-        for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
-            local lowerState = string.lower(validState)
-            if string.sub(lowerState, 1, 4) == "r100" and string.sub(lowerState, 5) == lowerSuffix then
-                return validState
-            end
-            local prefix = string.sub(lowerState, 1, 3)
-            if (prefix == "r40" or prefix == "r60" or prefix == "r80") and string.sub(lowerState, 4) == lowerSuffix then
-                return validState
-            end
-        end
-    end
-    return suffix
-end
-
 -- Function: findSpeedPrefixedState
 -- Description: Searches signalName's valid states for one that's exactly suffix prefixed
 --              with a speed restriction (R30/R40/R60/R80/R100), e.g. suffix "OpakOcek40"
@@ -227,6 +184,59 @@ local function findSpeedPrefixedState(signalName, suffix)
         end
     end
     return nil
+end
+
+-- Function: chooseProceedState
+-- Description: Picks the "route is set, proceed" state for a signal. VS/VL Inserted signals
+--              always use "OdNavDovJizdu" (checked by name -- faster than querying the
+--              controller, and sidesteps the casing quirk above). Other signals are asked
+--              what they actually support: some shared departure signals (like "S1-3") also
+--              use "OdNavDovJizdu" instead of Volno/R40...
+--              downstreamState/downstreamName describe whatever signal comes right after
+--              this one (see resolveNextSignal). Three possible base aspects, exactly like a
+--              real distant signal: Vystraha if downstream is restrictive; OcekXX (an
+--              advance speed warning, XX taken from downstream's OWN leading R-prefix, e.g.
+--              downstream "R40Volno" -> "Ocek40" here) if downstream isn't restrictive but
+--              still carries a speed restriction of its own; otherwise plain Volno. This
+--              only looks at downstream's IMMEDIATE leading R-prefix, not any OcekYY it may
+--              itself be carrying, so an advance warning doesn't keep echoing itself another
+--              hop further back. allStraight is THIS signal's own segment only (see
+--              route.segmentStraight) -- a curve elsewhere on the route doesn't affect it.
+--              The speed prefix on top of that base aspect prefers a physical speed sign
+--              posted at the next signal (getSpeedSignText) over this segment's own
+--              straight/curved shape, falling back to the latter when there's no sign or
+--              this signal can't show that particular speed, and to no prefix at all when
+--              neither applies.
+local function chooseProceedState(signalName, allStraight, downstreamState, downstreamName)
+    if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
+        return "OdNavDovJizdu"
+    end
+
+    local suffix
+    if isStateRestrictive(downstreamState) then
+        suffix = "Vystraha"
+    else
+        local downstreamSpeed = downstreamState and string.match(downstreamState, "^R(%d+)")
+        suffix = downstreamSpeed and ("Ocek" .. downstreamSpeed) or "Volno"
+    end
+
+    if downstreamName then
+        local hasSign, signText = controllers.Signals.getSpeedSignText(downstreamName)
+        if hasSign then
+            local candidate = "R" .. signText .. suffix
+            if hasValidState(signalName, candidate) then
+                return candidate
+            end
+        end
+    end
+
+    if not allStraight then
+        local prefixed = findSpeedPrefixedState(signalName, suffix)
+        if prefixed then
+            return prefixed
+        end
+    end
+    return suffix
 end
 
 -- Function: chooseRepeaterEchoState
@@ -347,7 +357,7 @@ applyMainSignalState = function(signal, signalObj, state)
             end
         end
         activeRouteRelevant[signal[3]] = nil
-        activeRouteAllStraight[signal[3]] = nil
+        activeRouteResult[signal[3]] = nil
         setRouteDependency(signal[3], nil)
     end
     workspace:draw()
@@ -359,40 +369,48 @@ end
 --              walking back-to-front from whatever real signal lies beyond the exit (or the
 --              precomputed fallback state when there is none, see resolveNextSignal), through
 --              each relevant signal, to the entrance itself -- exactly like at build time.
+--              Each signal's speed prefix is decided from the curvature of its OWN segment
+--              only (route.segmentStraight, between its index in result.cells and whatever
+--              comes right after it), not the whole route's allStraight, so a curve near one
+--              end doesn't bleed an R-prefix onto a signal whose own stretch is straight.
 --              Used both right after building a route and whenever recomputeRouteChain
 --              re-runs it later because something it depends on changed.
-local function applyRouteChainStates(entranceSignal, entranceObj, relevant, allStraight, nextName, nextFallback)
+local function applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
     local carriedName = nextName
     local carriedState = nextName and controllers.Signals.getState(nextName) or nextFallback
 
+    local downstreamIndex = #result.cells
     for i = #relevant, 1, -1 do
         local entry = relevant[i]
+        local segmentStraight = route.segmentStraight(routeGraph, result, entry.index, downstreamIndex)
         local appliedState
         if entry.kind == "repeater" and carriedName then
-            appliedState = chooseRepeaterEchoState(entry.name, allStraight, carriedState)
+            appliedState = chooseRepeaterEchoState(entry.name, segmentStraight, carriedState)
         else
-            appliedState = chooseProceedState(entry.name, allStraight, carriedState, carriedName)
+            appliedState = chooseProceedState(entry.name, segmentStraight, carriedState, carriedName)
             carriedState = appliedState
             carriedName = entry.name
         end
         applyMainSignalState(signalConfigByName[entry.name], signalGuiObjects[entry.name], appliedState)
+        downstreamIndex = entry.index
     end
 
     -- The entrance itself can be a repeater too (e.g. "Lc3" standing in for a departure
     -- signal) -- it echoes the same way any repeater along the route would, not just the
     -- ones strictly in between.
+    local entranceSegmentStraight = route.segmentStraight(routeGraph, result, 1, downstreamIndex)
     local entranceState
     if route.classifySignal(entranceSignal[3]) == "repeater" and carriedName then
-        entranceState = chooseRepeaterEchoState(entranceSignal[3], allStraight, carriedState)
+        entranceState = chooseRepeaterEchoState(entranceSignal[3], entranceSegmentStraight, carriedState)
     else
-        entranceState = chooseProceedState(entranceSignal[3], allStraight, carriedState, carriedName)
+        entranceState = chooseProceedState(entranceSignal[3], entranceSegmentStraight, carriedState, carriedName)
     end
     applyMainSignalState(entranceSignal, entranceObj, entranceState)
 end
 
 -- Function: recomputeRouteChain
 -- Description: Re-runs applyRouteChainStates for an already-built, still-active route, using
---              its remembered relevant/allStraight/nextName/nextFallback (the graph topology
+--              its remembered relevant/result/nextName/nextFallback (the graph topology
 --              hasn't changed, only live signal states have) -- this is the reactive half of
 --              the cascade triggered by cascadeDependents.
 recomputeRouteChain = function(entranceName)
@@ -401,7 +419,7 @@ recomputeRouteChain = function(entranceName)
     local entranceSignal = signalConfigByName[entranceName]
     local entranceObj = signalGuiObjects[entranceName]
     if not entranceSignal or not entranceObj then return end
-    applyRouteChainStates(entranceSignal, entranceObj, relevant, activeRouteAllStraight[entranceName],
+    applyRouteChainStates(entranceSignal, entranceObj, relevant, activeRouteResult[entranceName],
         activeRouteNextName[entranceName], activeRouteNextFallback[entranceName])
 end
 
@@ -652,7 +670,7 @@ for _, signal in pairs(config.Signals) do
                             and passed.travelDir == passedSignal.dir
                             and (passedSignal.kind == "main" or passedSignal.kind == "inserted" or passedSignal.kind == "repeater")
                             and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
-                            relevant[#relevant + 1] = {name = passed.name, kind = passedSignal.kind}
+                            relevant[#relevant + 1] = {name = passed.name, kind = passedSignal.kind, index = passed.index}
                         end
                     end
                     for _, entry in ipairs(relevant) do
@@ -671,11 +689,11 @@ for _, signal in pairs(config.Signals) do
                     -- state actually changes (setRouteDependency/cascadeDependents).
                     local nextName, nextFallback = resolveNextSignal(signal[1], signal[2], exitTravelDir)
                     activeRouteRelevant[entranceSignal[3]] = relevant
-                    activeRouteAllStraight[entranceSignal[3]] = result.allStraight
+                    activeRouteResult[entranceSignal[3]] = result
                     activeRouteNextFallback[entranceSignal[3]] = nextFallback
                     setRouteDependency(entranceSignal[3], nextName)
 
-                    applyRouteChainStates(entranceSignal, entranceObj, relevant, result.allStraight, nextName, nextFallback)
+                    applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
 
                     -- Remember every non-entrance signal this route cleared, so cancelling
                     -- the route (right-click the entrance, or manually setting it to Stuj)

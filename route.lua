@@ -256,10 +256,12 @@ end
 
 -- Given a route's result, returns every signal (any kind, any name) whose cell the route
 -- passes through -- excluding the entrance's own cell (index 1 of result.cells) -- paired
--- with the direction the route actually travels through that cell:
--- {{name = "S1-3", travelDir = "L"}, ...}. Compare travelDir against that signal's own
--- .dir to know whether it was passed "the right way" (and should have its state updated)
--- or merely passed through/against its facing (and must be left alone).
+-- with the direction the route actually travels through that cell and its index within
+-- result.cells: {{name = "S1-3", travelDir = "L", index = 7}, ...}. Compare travelDir
+-- against that signal's own .dir to know whether it was passed "the right way" (and should
+-- have its state updated) or merely passed through/against its facing (and must be left
+-- alone). index is what lets route.segmentStraight check curvature between two specific
+-- signals along the path, rather than the route as a whole.
 function route.signalsAlongRoute(graph, result)
     local byPosition = {}
     for name, sig in pairs(graph.signalsByName) do
@@ -275,11 +277,34 @@ function route.signalsAlongRoute(graph, result)
         local names = byPosition[key(cur.x, cur.y)]
         if names then
             for _, name in ipairs(names) do
-                found[#found + 1] = {name = name, travelDir = d}
+                found[#found + 1] = {name = name, travelDir = d, index = i}
             end
         end
     end
     return found
+end
+
+-- Whether the stretch of a built route between result.cells[fromIndex] and
+-- result.cells[toIndex] (inclusive) passes through any switch used in its curved position.
+-- result.allStraight covers the WHOLE route; this covers just one hop of it, so a signal
+-- whose own immediate segment is straight doesn't inherit an R-prefix caused by a curve
+-- somewhere else entirely on the route.
+function route.segmentStraight(graph, result, fromIndex, toIndex)
+    local lo, hi = fromIndex, toIndex
+    if lo > hi then
+        lo, hi = hi, lo
+    end
+    for i = lo, hi do
+        local c = result.cells[i]
+        local cell = graph.cells[key(c.x, c.y)]
+        if cell and cell.kind == "switch" then
+            local icon = result.switches[cell.name]
+            if icon and route.isCurveGlyph(icon) then
+                return false
+            end
+        end
+    end
+    return true
 end
 
 -- Checks (x, y) itself first (before walking anywhere), then walks forward in travelDir,
