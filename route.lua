@@ -54,6 +54,10 @@ local function key(x, y)
     return x .. "," .. y
 end
 
+local function stateKey(x, y, dir)
+    return x .. "," .. y .. "," .. dir
+end
+
 function route.isCurveGlyph(glyph)
     return CURVE_GLYPHS[glyph] == true
 end
@@ -192,12 +196,19 @@ end
 -- before ever trying the closest one -- backtracking unwinds from whichever switch was
 -- visited LAST, not whichever is nearest the entrance. Searching breadth-first instead
 -- guarantees the first route found is a shortest one (fewest cells), which is what actually
--- matches what a dispatcher would expect. Each queued candidate carries its own
--- visited/switchChoices/path snapshot (cloned only when it actually changes) so two
--- candidates can commit differently to the same switch, or revisit a cell a sibling
--- candidate already ruled out, without interfering with each other -- the same freedom the
--- old recursive version got from backtrack-restore, just explored shortest-first instead of
--- deepest-first.
+-- matches what a dispatcher would expect.
+--
+-- visited is a single table SHARED across the whole search (not cloned per branch), keyed by
+-- "x,y,dir" and marked at enqueue time -- this is the standard BFS dedup: once some branch has
+-- reached a given cell heading a given direction, no other branch can usefully reach that same
+-- state again (BFS processes strictly non-decreasing path length, so the first arrival is via a
+-- shortest path). Without this, a station with N switches feeding into each other lets many
+-- different switch-commitment histories re-converge on the same physical cells, and the queue
+-- grows combinatorially in N instead of staying roughly linear in graph size -- this is exactly
+-- what made routes crossing a station's whole switch ladder (many switches) hang, while shorter
+-- routes crossing only a few switches stayed fast. switchChoices/path are still cloned only when
+-- they actually change, same as before, so different branches can still commit differently to a
+-- switch they haven't reached yet.
 local function findPathInternal(graph, entranceName, exitName, strictExit)
     local entrance = graph.signalsByName[entranceName]
     local exit = graph.signalsByName[exitName]
@@ -206,10 +217,11 @@ local function findPathInternal(graph, entranceName, exitName, strictExit)
     end
 
     local vec = DIRS[entrance.dir]
+    local startX, startY, startDir = entrance.x + vec.dx, entrance.y + vec.dy, entrance.dir
+    local visited = {[stateKey(startX, startY, startDir)] = true}
     local queue = {
         {
-            x = entrance.x + vec.dx, y = entrance.y + vec.dy, dir = entrance.dir,
-            visited = {[key(entrance.x, entrance.y)] = true},
+            x = startX, y = startY, dir = startDir,
             switchChoices = {},
             path = {{x = entrance.x, y = entrance.y}},
         },
@@ -220,50 +232,53 @@ local function findPathInternal(graph, entranceName, exitName, strictExit)
         local node = queue[head]
         head = head + 1
 
-        local k = key(node.x, node.y)
-        if not node.visited[k] then
-            if node.x == exit.x and node.y == exit.y and (not strictExit or node.dir == exit.dir) then
-                local path = cloneTable(node.path)
-                path[#path + 1] = {x = node.x, y = node.y}
+        if node.x == exit.x and node.y == exit.y and (not strictExit or node.dir == exit.dir) then
+            local path = cloneTable(node.path)
+            path[#path + 1] = {x = node.x, y = node.y}
 
-                local allStraight = true
-                for _, icon in pairs(node.switchChoices) do
-                    if route.isCurveGlyph(icon) then
-                        allStraight = false
-                        break
-                    end
+            local allStraight = true
+            for _, icon in pairs(node.switchChoices) do
+                if route.isCurveGlyph(icon) then
+                    allStraight = false
+                    break
                 end
-
-                local crossings = {}
-                for _, c in ipairs(path) do
-                    local cell = graph.cells[key(c.x, c.y)]
-                    if cell and cell.kind == "crossing" then
-                        crossings[cell.name] = true
-                    end
-                end
-
-                return {switches = node.switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
             end
 
-            local cell = graph.cells[k]
-            if cell then
-                local visited = cloneTable(node.visited)
-                visited[k] = true
-                local path = cloneTable(node.path)
-                path[#path + 1] = {x = node.x, y = node.y}
+            local crossings = {}
+            for _, c in ipairs(path) do
+                local cell = graph.cells[key(c.x, c.y)]
+                if cell and cell.kind == "crossing" then
+                    crossings[cell.name] = true
+                end
+            end
 
-                for _, opt in ipairs(continuationsFor(cell, node.dir, node.switchChoices)) do
-                    local switchChoices = node.switchChoices
-                    if opt.icon then
-                        switchChoices = cloneTable(node.switchChoices)
-                        switchChoices[cell.name] = opt.icon
+            return {switches = node.switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
+        end
+
+        local cell = graph.cells[key(node.x, node.y)]
+        if cell then
+            local path = cloneTable(node.path)
+            path[#path + 1] = {x = node.x, y = node.y}
+
+            for _, opt in ipairs(continuationsFor(cell, node.dir, node.switchChoices)) do
+                local optVec = DIRS[opt.dir]
+                local nx, ny = node.x + optVec.dx, node.y + optVec.dy
+                -- Never step back onto the entrance's own cell, from any direction -- it's
+                -- the start of the route, not a valid waypoint.
+                if not (nx == entrance.x and ny == entrance.y) then
+                    local sk = stateKey(nx, ny, opt.dir)
+                    if not visited[sk] then
+                        visited[sk] = true
+                        local switchChoices = node.switchChoices
+                        if opt.icon then
+                            switchChoices = cloneTable(node.switchChoices)
+                            switchChoices[cell.name] = opt.icon
+                        end
+                        queue[#queue + 1] = {
+                            x = nx, y = ny, dir = opt.dir,
+                            switchChoices = switchChoices, path = path,
+                        }
                     end
-
-                    local optVec = DIRS[opt.dir]
-                    queue[#queue + 1] = {
-                        x = node.x + optVec.dx, y = node.y + optVec.dy, dir = opt.dir,
-                        visited = visited, switchChoices = switchChoices, path = path,
-                    }
                 end
             end
         end
