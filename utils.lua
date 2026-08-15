@@ -3,7 +3,6 @@ local Config = require("config")
 local internet = require("internet")
 local json = require("json")
 local controllers = require("controllers")
-local route = require("route")
 
 -- Function: utils.calcSwitchTextPos
 -- Description: Calculate the position of the switch text
@@ -96,13 +95,29 @@ local switchesConnected = controllers.isConnected("Switches")
 local signalsConnected  = controllers.isConnected("Signals")
 local crossingsConnected = controllers.isConnected("Crossings")
 
--- Function: utils.isSwitchDefaultCurve
--- Description: Whether a switch's default (untoggled) layout icon is a curve.
---              The Universal Digital Controller's activate() is true for this default position.
+-- Function: utils.switchActivateState
+-- Description: What boolean to send to setActive so the switch's PHYSICAL position matches
+--              which icon it should be showing -- switch[3] (default/untoggled) when
+--              toggled is false, switch[4] (toggled) when toggled is true. This is a pure
+--              position rule and has nothing to do with which icon happens to look curved:
+--              switch[3] is "deactivated" and switch[4] is "activated" purely because
+--              they're listed first/second, by convention, for every layout author to rely
+--              on consistently.
+--              Normally that maps straight onto the controller: activate(false) shows
+--              switch[3], activate(true) shows switch[4]. A rare physical switch block ends
+--              up wired/placed backwards from every other one, so sending activate(false)
+--              actually shows ITS switch[4] instead -- mark those by adding a 6th element,
+--              `true`, to that one Config.Switches entry
+--              ({x, y, iconDefault, iconToggled, name, true}), which flips the boolean sent
+--              for that switch only. Every other switch is unaffected (switch[6] is nil).
 -- Parameters: switch - table containing the switch data
+--             toggled - whether the switch should be showing its switch[4] icon
 -- Returns: boolean
-utils.isSwitchDefaultCurve = function(switch)
-    return route.isCurveGlyph(switch[3])
+utils.switchActivateState = function(switch, toggled)
+    if switch[6] then
+        return not toggled
+    end
+    return toggled
 end
 
 -- Function: utils.resetLayout
@@ -110,7 +125,7 @@ end
 utils.resetLayout = function()
     if switchesConnected then
         for _, switch in pairs(Config.Switches) do
-            controllers.Switches.setActive(switch[5], utils.isSwitchDefaultCurve(switch))
+            controllers.Switches.setActive(switch[5], utils.switchActivateState(switch, false))
         end
     end
 
@@ -125,7 +140,7 @@ end
 --             toggled - whether the switch is now showing its non-default icon
 utils.toggleSwitch = function(switch, toggled)
     if not switchesConnected then return end
-    controllers.Switches.setActive(switch[5], toggled ~= utils.isSwitchDefaultCurve(switch))
+    controllers.Switches.setActive(switch[5], utils.switchActivateState(switch, toggled))
 end
 
 -- Function: utils.toggleCrossing

@@ -637,7 +637,6 @@ for _, signal in pairs(config.Signals) do
                     setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
                 else
                     for switchName, icon in pairs(result.switches) do
-                        controllers.Switches.setActive(switchName, route.isCurveGlyph(icon))
                         -- Route-thrown switches bypass their own click handler, so sync the
                         -- GUI (text + toggle state) here too, or it'll silently drift from
                         -- the physical position until someone happens to click it manually.
@@ -645,8 +644,10 @@ for _, signal in pairs(config.Signals) do
                         -- out from under the route.
                         local switchEntry = switchGuiObjects[switchName]
                         if switchEntry then
+                            local toggled = (icon == switchEntry.cfg[4])
+                            controllers.Switches.setActive(switchName, utils.switchActivateState(switchEntry.cfg, toggled))
                             switchEntry.obj.text = icon
-                            switchEntry.obj.state = (icon == switchEntry.cfg[4])
+                            switchEntry.obj.state = toggled
                             switchEntry.obj.locked = true
                         end
                     end
