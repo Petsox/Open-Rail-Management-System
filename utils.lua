@@ -180,7 +180,11 @@ end
 
 local function hasValidState(signalName, wantedState)
     local wantedLower = string.lower(wantedState)
-    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+    -- getValidStatesForSignal comes back as nil rather than an empty table when signalName
+    -- has no paired receiver at all (e.g. a repeater with no matching "Pr" distant signal
+    -- built in the world) -- "or {}" treats that the same as "supports nothing", which is
+    -- exactly right: hasValidState should just say no, not crash.
+    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName) or {}) do
         if string.lower(validState) == wantedLower then
             return true
         end
