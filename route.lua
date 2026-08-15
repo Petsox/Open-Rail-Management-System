@@ -151,8 +151,18 @@ local function continuationsFor(cell, cameFromDir, switchChoices)
     else
         local dirs = cell.dirs
         if dirs and dirs[entrySide] then
+            -- A fixed multi-way junction (╠╣╦╩) can offer more than one continuation at
+            -- once, unlike every other plain track glyph. Try continuing straight through
+            -- (same direction as arrival) before turning, same principle as switches
+            -- preferring their straight icon over the curved one -- otherwise a search
+            -- arriving here always tries the turn first (DIR_ORDER doesn't know "straight"
+            -- from "turn"), producing a needlessly roundabout route whenever the straight
+            -- option would also have worked.
+            if dirs[cameFromDir] then
+                results[#results + 1] = {dir = cameFromDir}
+            end
             for _, d in ipairs(DIR_ORDER) do
-                if d ~= entrySide and dirs[d] then
+                if d ~= entrySide and d ~= cameFromDir and dirs[d] then
                     results[#results + 1] = {dir = d}
                 end
             end
