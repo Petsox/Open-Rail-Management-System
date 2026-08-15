@@ -205,6 +205,28 @@ end
 --              straight/curved shape, falling back to the latter when there's no sign or
 --              this signal can't show that particular speed, and to no prefix at all when
 --              neither applies.
+-- Function: extractDownstreamSpeed
+-- Description: Pulls a speed number out of downstreamState to advance-warn about, when
+--              downstream isn't restrictive but still carries one. A leading "R" prefix
+--              (downstream's own required speed, e.g. "R40Volno") always counts. A
+--              repeater's "Opak"-prefixed echo also counts (e.g. "OpakOcek40") -- since a
+--              repeater relays whatever real signal it stands in for, this looks straight
+--              through it to that speed. An ORDINARY signal's own bare advance warning
+--              (plain "Ocek40", no repeater involved) does NOT chain a further hop back --
+--              see the LS/S3a/S3 case: LS shows plain Volno off S3a's "Ocek40", not another
+--              "Ocek40" -- that would be a preview of a preview with no real signal keeping
+--              it grounded; a repeater's echo stays grounded in whatever it's relaying.
+local function extractDownstreamSpeed(downstreamState, downstreamName)
+    if not downstreamState then return nil end
+    local speed = string.match(downstreamState, "^R(%d+)")
+    if speed then return speed end
+    if downstreamName and route.classifySignal(downstreamName) == "repeater" then
+        speed = string.match(downstreamState, "^OpakOcek(%d+)")
+        if speed then return speed end
+    end
+    return nil
+end
+
 local function chooseProceedState(signalName, allStraight, downstreamState, downstreamName)
     if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
         return "OdNavDovJizdu"
@@ -214,7 +236,7 @@ local function chooseProceedState(signalName, allStraight, downstreamState, down
     if isStateRestrictive(downstreamState) then
         suffix = "Vystraha"
     else
-        local downstreamSpeed = downstreamState and string.match(downstreamState, "^R(%d+)")
+        local downstreamSpeed = extractDownstreamSpeed(downstreamState, downstreamName)
         suffix = downstreamSpeed and ("Ocek" .. downstreamSpeed) or "Volno"
     end
 

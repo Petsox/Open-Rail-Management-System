@@ -140,12 +140,16 @@ end
 -- Function: utils.simplifyStateForPreview
 -- Description: Maps any Main signal state down to the reduced aspect vocabulary used by
 --              preview/echo signals: Vystraha, Volno, Ocek40, Ocek60, Ocek80 or Ocek100.
---              Shared by the "Pr" expect signal (sent as-is) and "Opak"-prefixed repeater
---              signals (prefixed with "Opak" -- SignalState.java only defines OpakVolno/
---              OpakVystraha/OpakOcek40/OpakOcek60/OpakOcek80/OpakOcek100, so only this
---              reduced set of results is ever valid to prefix). R30 has no Ocek30
---              counterpart in SignalState.java, so it falls through to the Vystraha default
---              same as any other unrecognized state.
+--              Shared by the "Pr" expect signal and "Opak"-prefixed repeater signals
+--              (SignalState.java only defines OpakVolno/OpakVystraha/OpakOcek40/60/80/100,
+--              so only this reduced set of results is ever valid to prefix with "Opak").
+--              R30 has no Ocek30 counterpart in SignalState.java, so it falls through to
+--              the Vystraha default same as any other unrecognized state. A bare "OcekXX"
+--              input (a Main signal already showing its own advance speed warning, no
+--              R-prefix) passes through unchanged rather than being simplified away --
+--              losing it would mean a "Pr" or repeater signal echoing that signal reports
+--              "all clear" while the real signal is actively warning about a restriction
+--              ahead.
 -- Parameters: state - the state of the signal being echoed
 -- Returns: string
 utils.simplifyStateForPreview = function(state)
@@ -166,7 +170,7 @@ utils.simplifyStateForPreview = function(state)
     elseif string.sub(state, 1, 3) == "R80" then
         return "Ocek80"
     elseif string.sub(state, 1, 4) == "Ocek" then
-        return "Volno"
+        return state
     elseif string.sub(state, 1, 4) == "Opak" then
         return string.sub(state, 5)
     else
@@ -174,13 +178,37 @@ utils.simplifyStateForPreview = function(state)
     end
 end
 
+local function hasValidState(signalName, wantedState)
+    local wantedLower = string.lower(wantedState)
+    for _, validState in pairs(controllers.Signals.getValidStatesForSignal(signalName)) do
+        if string.lower(validState) == wantedLower then
+            return true
+        end
+    end
+    return false
+end
+
 -- Function: utils.sendStateToExpectSig
--- Description: Sends the state of the signal to the expect signal
+-- Description: Sends the state of the signal to the expect signal. When the reduced preview
+--              is itself an Ocek-family advance warning (the source state carried one, bare
+--              or under an R-prefix), that's a preview OF a preview -- prefer the
+--              "Opak"-prefixed compound (e.g. "OpakOcek40") to mark it as relayed, same as a
+--              repeater would, falling back to the bare reduced form if this specific "Pr"
+--              signal doesn't support that combined state.
 -- Parameters: signalName - the name of the signal
 --             state - the state of the signal
 utils.sendStateToExpectSig = function(signalName, state)
     if not signalsConnected then return end
-    controllers.Signals.setState("Pr" .. signalName, utils.simplifyStateForPreview(state))
+    local prName = "Pr" .. signalName
+    local reduced = utils.simplifyStateForPreview(state)
+    if string.sub(reduced, 1, 4) == "Ocek" then
+        local opakForm = "Opak" .. reduced
+        if hasValidState(prName, opakForm) then
+            controllers.Signals.setState(prName, opakForm)
+            return
+        end
+    end
+    controllers.Signals.setState(prName, reduced)
 end
 
 -- Simple shallow copy of a table
