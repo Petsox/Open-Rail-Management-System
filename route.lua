@@ -172,52 +172,32 @@ local function continuationsFor(cell, cameFromDir, switchChoices)
     return results
 end
 
+local function cloneTable(t)
+    local copy = {}
+    for k, v in pairs(t) do
+        copy[k] = v
+    end
+    return copy
+end
+
 -- strictExit: if true, the exit must also be arrived at heading in ITS OWN facing
 -- direction (used internally for sibling-reachability checks). If false, the exit is a
 -- pure location marker -- any arrival direction counts, since the operator's clicked exit
 -- signal may deliberately face "backwards" relative to the route (e.g. selecting VL3 to
 -- mean "route to track 3" even though the train travels opposite VL3's own facing).
-local function search(graph, x, y, cameFromDir, exit, strictExit, visited, switchChoices, path)
-    local k = key(x, y)
-    if visited[k] then
-        return false
-    end
-
-    if x == exit.x and y == exit.y and (not strictExit or cameFromDir == exit.dir) then
-        path[#path + 1] = {x = x, y = y}
-        return true
-    end
-
-    local cell = graph.cells[k]
-    if not cell then
-        return false
-    end
-
-    visited[k] = true
-    path[#path + 1] = {x = x, y = y}
-
-    for _, opt in ipairs(continuationsFor(cell, cameFromDir, switchChoices)) do
-        local previousChoice
-        if opt.icon then
-            previousChoice = switchChoices[cell.name]
-            switchChoices[cell.name] = opt.icon
-        end
-
-        local vec = DIRS[opt.dir]
-        if search(graph, x + vec.dx, y + vec.dy, opt.dir, exit, strictExit, visited, switchChoices, path) then
-            return true
-        end
-
-        if opt.icon then
-            switchChoices[cell.name] = previousChoice
-        end
-    end
-
-    visited[k] = nil
-    path[#path] = nil
-    return false
-end
-
+--
+-- Breadth-first, not depth-first: a depth-first search always finishes exploring "keep
+-- going straight" before ever backtracking to a nearby switch, so on a track with several
+-- switches in a row it tends to find some valid-but-circuitous route through a distant one
+-- before ever trying the closest one -- backtracking unwinds from whichever switch was
+-- visited LAST, not whichever is nearest the entrance. Searching breadth-first instead
+-- guarantees the first route found is a shortest one (fewest cells), which is what actually
+-- matches what a dispatcher would expect. Each queued candidate carries its own
+-- visited/switchChoices/path snapshot (cloned only when it actually changes) so two
+-- candidates can commit differently to the same switch, or revisit a cell a sibling
+-- candidate already ruled out, without interfering with each other -- the same freedom the
+-- old recursive version got from backtrack-restore, just explored shortest-first instead of
+-- deepest-first.
 local function findPathInternal(graph, entranceName, exitName, strictExit)
     local entrance = graph.signalsByName[entranceName]
     local exit = graph.signalsByName[exitName]
@@ -225,33 +205,71 @@ local function findPathInternal(graph, entranceName, exitName, strictExit)
         return nil
     end
 
-    local visited = {[key(entrance.x, entrance.y)] = true}
-    local switchChoices = {}
-    local path = {{x = entrance.x, y = entrance.y}}
-
     local vec = DIRS[entrance.dir]
-    local ok = search(graph, entrance.x + vec.dx, entrance.y + vec.dy, entrance.dir, exit, strictExit, visited, switchChoices, path)
-    if not ok then
-        return nil
-    end
+    local queue = {
+        {
+            x = entrance.x + vec.dx, y = entrance.y + vec.dy, dir = entrance.dir,
+            visited = {[key(entrance.x, entrance.y)] = true},
+            switchChoices = {},
+            path = {{x = entrance.x, y = entrance.y}},
+        },
+    }
+    local head = 1
 
-    local allStraight = true
-    for _, icon in pairs(switchChoices) do
-        if route.isCurveGlyph(icon) then
-            allStraight = false
-            break
+    while head <= #queue do
+        local node = queue[head]
+        head = head + 1
+
+        local k = key(node.x, node.y)
+        if not node.visited[k] then
+            if node.x == exit.x and node.y == exit.y and (not strictExit or node.dir == exit.dir) then
+                local path = cloneTable(node.path)
+                path[#path + 1] = {x = node.x, y = node.y}
+
+                local allStraight = true
+                for _, icon in pairs(node.switchChoices) do
+                    if route.isCurveGlyph(icon) then
+                        allStraight = false
+                        break
+                    end
+                end
+
+                local crossings = {}
+                for _, c in ipairs(path) do
+                    local cell = graph.cells[key(c.x, c.y)]
+                    if cell and cell.kind == "crossing" then
+                        crossings[cell.name] = true
+                    end
+                end
+
+                return {switches = node.switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
+            end
+
+            local cell = graph.cells[k]
+            if cell then
+                local visited = cloneTable(node.visited)
+                visited[k] = true
+                local path = cloneTable(node.path)
+                path[#path + 1] = {x = node.x, y = node.y}
+
+                for _, opt in ipairs(continuationsFor(cell, node.dir, node.switchChoices)) do
+                    local switchChoices = node.switchChoices
+                    if opt.icon then
+                        switchChoices = cloneTable(node.switchChoices)
+                        switchChoices[cell.name] = opt.icon
+                    end
+
+                    local optVec = DIRS[opt.dir]
+                    queue[#queue + 1] = {
+                        x = node.x + optVec.dx, y = node.y + optVec.dy, dir = opt.dir,
+                        visited = visited, switchChoices = switchChoices, path = path,
+                    }
+                end
+            end
         end
     end
 
-    local crossings = {}
-    for _, c in ipairs(path) do
-        local cell = graph.cells[key(c.x, c.y)]
-        if cell and cell.kind == "crossing" then
-            crossings[cell.name] = true
-        end
-    end
-
-    return {switches = switchChoices, crossings = crossings, cells = path, allStraight = allStraight}
+    return nil
 end
 
 -- Finds a route from entranceName to exitName. entranceName forces the route's first step
