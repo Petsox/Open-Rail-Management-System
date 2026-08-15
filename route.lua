@@ -119,35 +119,6 @@ function route.buildGraph(config)
         end
     end
 
-    -- Some layouts write a track-number (or other short) label directly in a one-cell gap
-    -- left in the middle of a straight run (e.g. "4" between two Track entries on the same
-    -- row) instead of covering that cell with an actual glyph. Config.Labels has no facing
-    -- direction to synthesize a connector from the way Signals does, so infer the axis from
-    -- whichever neighbors are already real cells: horizontal if both sides along the row are
-    -- covered, vertical if both sides along the column are covered (checked independently,
-    -- so a label sitting at a genuine crossing point still gets both). A label with no track
-    -- on either side of it in any direction is left alone -- it's just decorative text.
-    for _, l in pairs(config.Labels or {}) do
-        local x, y, labelText = l[1], l[2], l[3]
-        local length = unicode.len(labelText)
-        for i = 1, length do
-            local cx = x + i - 1
-            local k = key(cx, y)
-            if not cells[k] then
-                local axis = {}
-                if cells[key(cx - 1, y)] and cells[key(cx + 1, y)] then
-                    axis.L, axis.R = true, true
-                end
-                if cells[key(cx, y - 1)] and cells[key(cx, y + 1)] then
-                    axis.U, axis.D = true, true
-                end
-                if next(axis) then
-                    cells[k] = {kind = "track", dirs = axis}
-                end
-            end
-        end
-    end
-
     return {cells = cells, signalsByName = signalsByName}
 end
 
