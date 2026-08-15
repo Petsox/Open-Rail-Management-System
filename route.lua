@@ -25,6 +25,14 @@ local GLYPH_DIRS = {
     ["╡"] = {L = true},
     ["╥"] = {D = true},
     ["╨"] = {U = true},
+    -- Fixed three-way junctions (plain Track glyphs, not a Switch -- always open all three
+    -- ways at once, no throwable position). continuationsFor/search already handle a
+    -- non-switch cell offering more than one onward direction generically (the DFS just
+    -- tries each and backtracks on failure), so no other change is needed to support these.
+    ["╠"] = {U = true, D = true, R = true},
+    ["╣"] = {U = true, D = true, L = true},
+    ["╦"] = {L = true, R = true, D = true},
+    ["╩"] = {L = true, R = true, U = true},
     -- Tunnel mouths: purely decorative, pass straight through.
     ["⦗"] = {L = true, R = true},
     ["⦘"] = {L = true, R = true},
@@ -373,15 +381,21 @@ function route.nextSignal(graph, x, y, travelDir)
 
         local entrySide = OPPOSITE[dir]
         local dirs = cell.dirs
-        local nextDir = nil
+        local nextDirs = {}
         if dirs and dirs[entrySide] then
             for _, d in ipairs(DIR_ORDER) do
                 if d ~= entrySide and dirs[d] then
-                    nextDir = d
-                    break
+                    nextDirs[#nextDirs + 1] = d
                 end
             end
         end
+        if #nextDirs > 1 then
+            -- A fixed three-way junction (no throwable switch) offers more than one way
+            -- onward here -- just as undecidable as an unresolved switch, so treat it the
+            -- same way: ambiguous, not a dead end.
+            return nil, true
+        end
+        local nextDir = nextDirs[1]
         if not nextDir then
             return nil, false
         end
