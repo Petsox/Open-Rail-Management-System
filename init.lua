@@ -26,6 +26,12 @@ local activeRouteSignals = {}
 local crossingObjectsByName = {}
 local switchGuiObjects = {}
 
+-- entranceName -> the thread waiting for a route's crossing barriers to physically come down
+-- (see startCrossingArmWait). While this is set, the route's switches/crossings are already
+-- thrown but its signal chain has deliberately NOT been applied yet -- signalName ==
+-- activeRouteArmWait[entranceName]:kill() cancels it if the route is released early.
+local activeRouteArmWait = {}
+
 -- Reactive chaining: for a built route, activeRouteRelevant/activeRouteResult/
 -- activeRouteNextName remember everything needed to recompute its whole chain of states
 -- again later (not just at build time) -- entranceName -> {name=,kind=,index=} list in path
@@ -346,6 +352,10 @@ applyMainSignalState = function(signal, signalObj, state)
     utils.sendStateToExpectSig(signal[3], state)
     setSignalStateGUI(signalObj, state, signal)
     if state == "Stuj" then
+        if activeRouteArmWait[signal[3]] then
+            activeRouteArmWait[signal[3]]:kill()
+            activeRouteArmWait[signal[3]] = nil
+        end
         route.unlock(signal[3])
         if activeRouteCells[signal[3]] then
             highlightCells(activeRouteCells[signal[3]], false)
@@ -431,12 +441,72 @@ local function applyRouteChainStates(entranceSignal, entranceObj, relevant, resu
     applyMainSignalState(entranceSignal, entranceObj, entranceState)
 end
 
+-- Function: startCrossingArmWait
+-- Description: A route whose path crosses a level crossing must not clear its signals until
+--              the crossing's barrier arm is physically down -- the crossing controller
+--              (isArmDownFor) is polled once a second; while waiting, every crossing glyph on
+--              the route flashes gray/red so the operator can see it's still lowering. The
+--              route's switches/crossings/lock/highlight are already in place by the time this
+--              is called (only the signal chain itself is gated), so cancelling the route
+--              (applyMainSignalState ... "Stuj") works exactly as it always has -- it just also
+--              kills this thread if the arm hasn't come down yet. Once every crossing confirms
+--              down, the glyphs settle to their normal solid activated look and the chain is
+--              applied for the first time, same as an immediate route would have been.
+local function startCrossingArmWait(entranceSignal, entranceObj, relevant, result, nextName, nextFallback, crossingNames)
+    local armThread = thread.create(function()
+        while true do
+            local allDown = true
+            for _, crossingName in ipairs(crossingNames) do
+                if not controllers.Crossings.isArmDownFor(crossingName) then
+                    allDown = false
+                    break
+                end
+            end
+
+            if allDown then
+                for _, crossingName in ipairs(crossingNames) do
+                    for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+                        entry.obj.color = 0xFF0000
+                        entry.obj.text = entry.cfg[4]
+                    end
+                end
+                workspace:draw()
+                activeRouteArmWait[entranceSignal[3]] = nil
+                applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
+                return
+            end
+
+            for _, crossingName in ipairs(crossingNames) do
+                for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+                    entry.obj.color = 0xB2B2B2
+                end
+            end
+            workspace:draw()
+            os.sleep(0.5)
+
+            for _, crossingName in ipairs(crossingNames) do
+                for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+                    entry.obj.color = 0xFF0000
+                end
+            end
+            workspace:draw()
+            os.sleep(0.5)
+        end
+    end)
+    activeRouteArmWait[entranceSignal[3]] = armThread
+    armThread:resume()
+end
+
 -- Function: recomputeRouteChain
 -- Description: Re-runs applyRouteChainStates for an already-built, still-active route, using
 --              its remembered relevant/result/nextName/nextFallback (the graph topology
 --              hasn't changed, only live signal states have) -- this is the reactive half of
---              the cascade triggered by cascadeDependents.
+--              the cascade triggered by cascadeDependents. Skipped while the route is still
+--              waiting on a crossing arm (startCrossingArmWait) -- the chain hasn't been
+--              applied even once yet, so there's nothing to recompute; the arm-wait thread
+--              itself will apply it for the first time once the arm confirms down.
 recomputeRouteChain = function(entranceName)
+    if activeRouteArmWait[entranceName] then return end
     local relevant = activeRouteRelevant[entranceName]
     if not relevant then return end
     local entranceSignal = signalConfigByName[entranceName]
@@ -657,11 +727,12 @@ for _, signal in pairs(config.Signals) do
                         controllers.Crossings.activate(crossingName, true)
                         -- Same as switches: route-activated crossings bypass their own click
                         -- handler, so sync the GUI (lowered look, matching a manual toggle)
-                        -- here too, not just lock it.
+                        -- here too, not just lock it. Color is left alone here -- if the arm
+                        -- isn't confirmed down yet, startCrossingArmWait owns flashing it;
+                        -- otherwise it settles the color itself once confirmed.
                         for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
                             entry.obj.locked = true
                             entry.obj.state = true
-                            entry.obj.color = 0xFF0000
                             entry.obj.text = entry.cfg[4]
                         end
                     end
@@ -717,7 +788,19 @@ for _, signal in pairs(config.Signals) do
                     activeRouteNextFallback[entranceSignal[3]] = nextFallback
                     setRouteDependency(entranceSignal[3], nextName)
 
-                    applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
+                    -- A route crossing a level crossing must not clear its signals until the
+                    -- barrier is physically confirmed down -- defer the chain to
+                    -- startCrossingArmWait instead of applying it immediately. Routes with no
+                    -- crossing behave exactly as before.
+                    if next(result.crossings) then
+                        local crossingNames = {}
+                        for crossingName in pairs(result.crossings) do
+                            crossingNames[#crossingNames + 1] = crossingName
+                        end
+                        startCrossingArmWait(entranceSignal, entranceObj, relevant, result, nextName, nextFallback, crossingNames)
+                    else
+                        applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
+                    end
 
                     -- Remember every non-entrance signal this route cleared, so cancelling
                     -- the route (right-click the entrance, or manually setting it to Stuj)
