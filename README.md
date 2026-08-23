@@ -19,8 +19,7 @@ Needed Mods:
   
   [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)
 
-  [SignalCraft](https://pixeldrain.com/u/8bFEUxvG)
-   - [VirusTotal scan](https://www.virustotal.com/gui/file/63362a784ea69233104f196080acf7555494f3e0c5005445612f16a139657969?nocache=1)
+  [SignalCraft](https://www.curseforge.com/minecraft/mc-mods/signalcraft)
   
   </br>
   
@@ -32,7 +31,9 @@ When you have all the mods installed, make a computer with an <b>internet card, 
 
 Then, install OpenOS using the OpenOS floppy and run the following command, which will automatically install ORMS into <i>/home/orms</i>:
 
-	wget -f https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/new-master/installer.lua /tmp/installer.lua && /tmp/installer.lua
+	wget -f https://raw.githubusercontent.com/Petsox/Open-Rail-Management-System/automatic-route-building/installer.lua /tmp/installer.lua && /tmp/installer.lua
+
+This installs from the <b>automatic-route-building</b> branch -- ORMS's newest feature, letting you build a whole route (throwing every switch, lowering any crossing, and clearing the signals) by clicking just an entrance and exit signal instead of one click at a time. It isn't merged into the more tested <a href="https://github.com/Petsox/Open-Rail-Management-System/tree/new-master">new-master</a> branch yet; if you'd rather skip it for now, use that branch instead (same command, just swap the branch name).
 
  Alternatively, if the Github installer doesn't work (you are getting a certificate error), you may try the alternative Pastebin installer, which will also install ORMS into <i>/home/orms</i>:
 
