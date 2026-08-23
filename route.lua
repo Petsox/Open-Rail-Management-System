@@ -694,8 +694,16 @@ end
 local lockedCells = {}
 local locksByEntrance = {}
 
+-- result.cells[1] is always the entrance's own position (see findPathInternal), which is also
+-- exactly where some OTHER already-built route may legitimately have its exit -- chaining a
+-- new route onward from a signal that was just arrived at is normal (that's the whole point of
+-- an entrance/exit boundary), not a real conflict, so that one shared cell is deliberately
+-- skipped on both sides: the earlier route already locked it as ITS exit, and this one never
+-- needs to (routing never depends on the entrance's own cell being in any particular switch
+-- state -- the search starts one step past it).
 function route.tryLock(entranceName, result)
-    for _, c in ipairs(result.cells) do
+    for i = 2, #result.cells do
+        local c = result.cells[i]
         local owner = lockedCells[key(c.x, c.y)]
         if owner and owner ~= entranceName then
             return false
@@ -704,7 +712,8 @@ function route.tryLock(entranceName, result)
 
     route.unlock(entranceName)
     local claimed = {}
-    for _, c in ipairs(result.cells) do
+    for i = 2, #result.cells do
+        local c = result.cells[i]
         local k = key(c.x, c.y)
         lockedCells[k] = entranceName
         claimed[k] = true
