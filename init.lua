@@ -26,6 +26,13 @@ local activeRouteSignals = {}
 local crossingObjectsByName = {}
 local switchGuiObjects = {}
 
+-- signalName -> the direction of travel of the most recent route that ended AT this signal.
+-- A signal used as a route's exit may deliberately face "backwards" relative to how the layout
+-- actually continues from there (e.g. an Inserted VL/VS marker) -- remembering the real travel
+-- direction lets a NEW route started from that same signal continue onward the way traffic was
+-- actually moving, instead of blindly re-using its static printed facing.
+local lastRouteTravelDir = {}
+
 -- entranceName -> the thread waiting for a route's crossing barriers to physically come down
 -- (see startCrossingArmWait). While this is set, the route's switches/crossings are already
 -- thrown but its signal chain has deliberately NOT been applied yet -- signalName ==
@@ -237,7 +244,16 @@ local function extractDownstreamSpeed(downstreamState, downstreamName)
 end
 
 local function chooseProceedState(signalName, allStraight, downstreamState, downstreamName)
-    if route.classifySignal(signalName) == "inserted" or hasValidState(signalName, "OdNavDovJizdu") then
+    -- An Inserted (VS/VL) signal only ever shows one of two things -- "go" or its own
+    -- most-restrictive "no" (chooseRestrictiveState's StujPosunZak) -- never the full
+    -- Vystraha/Volno/R-prefix vocabulary a real Main signal has. It must still reflect whether
+    -- what's actually downstream is clear, though: unconditionally returning "go" regardless of
+    -- downstreamState (the previous behavior) let it show OdNavDovJizdu even while the real
+    -- next authority beyond it sat at Stuj.
+    if route.classifySignal(signalName) == "inserted" then
+        return isStateRestrictive(downstreamState) and "StujPosunZak" or "OdNavDovJizdu"
+    end
+    if hasValidState(signalName, "OdNavDovJizdu") then
         return "OdNavDovJizdu"
     end
 
@@ -516,6 +532,168 @@ recomputeRouteChain = function(entranceName)
         activeRouteNextName[entranceName], activeRouteNextFallback[entranceName])
 end
 
+-- Function: commitRoute
+-- Description: Given an already-computed, already-locked route result, actually builds it:
+--              throws switches, activates crossings (gating the signal chain on the crossing
+--              arm if needed via startCrossingArmWait), locks the highlighted cells, and
+--              applies/schedules every signal's state along the way. Shared by both ways a
+--              route can be built -- clicking the exit signal directly (which calls
+--              route.findPath) and clicking a plain rail cell instead (which calls
+--              route.findPathThroughPoint to resolve the nearest real signal beyond the click)
+--              -- exitSignal is that resolved endpoint's own config table either way; it is
+--              never itself given a state, exactly like a directly-clicked exit.
+local function commitRoute(entranceSignal, entranceObj, exitSignal, result)
+    for switchName, icon in pairs(result.switches) do
+        -- Route-thrown switches bypass their own click handler, so sync the GUI (text +
+        -- toggle state) here too, or it'll silently drift from the physical position until
+        -- someone happens to click it manually. Locked while the route holds it, so it can't
+        -- be manually toggled out from under the route.
+        local switchEntry = switchGuiObjects[switchName]
+        if switchEntry then
+            local toggled = (icon == switchEntry.cfg[4])
+            controllers.Switches.setActive(switchName, utils.switchActivateState(switchEntry.cfg, toggled))
+            switchEntry.obj.text = icon
+            switchEntry.obj.state = toggled
+            switchEntry.obj.locked = true
+        end
+    end
+    activeRouteSwitches[entranceSignal[3]] = result.switches
+
+    for crossingName in pairs(result.crossings) do
+        controllers.Crossings.activate(crossingName, true)
+        -- Same as switches: route-activated crossings bypass their own click handler, so sync
+        -- the GUI (lowered look, matching a manual toggle) here too, not just lock it. Color is
+        -- left alone here -- if the arm isn't confirmed down yet, startCrossingArmWait owns
+        -- flashing it; otherwise it settles the color itself once confirmed.
+        for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
+            entry.obj.locked = true
+            entry.obj.state = true
+            entry.obj.text = entry.cfg[4]
+        end
+    end
+    activeRouteCrossings[entranceSignal[3]] = result.crossings
+
+    activeRouteCells[entranceSignal[3]] = result.cells
+    highlightCells(result.cells, true)
+
+    -- Any OTHER Main/Inserted/Repeater signal genuinely passed -- in its own facing direction
+    -- -- along the route (e.g. a shared departure signal like S1-3, an Inserted VL/VS marking
+    -- which track is in use, or a repeater "Cestové" signal dividing the block) also gets
+    -- cleared. The exit itself is a pure location marker (it may deliberately face "backwards"
+    -- relative to the route) and never gets a state, and neither does anything only passed
+    -- against its own facing.
+    local usedInserted = {}
+    local touchedAlongRoute = {}
+    if route.classifySignal(entranceSignal[3]) == "inserted" then
+        usedInserted[entranceSignal[3]] = true
+    end
+
+    local exitTravelDir = nil
+    local relevant = {}
+    for _, passed in ipairs(route.signalsAlongRoute(routeGraph, result)) do
+        if passed.name == exitSignal[3] then
+            exitTravelDir = passed.travelDir
+        end
+        local passedSignal = routeGraph.signalsByName[passed.name]
+        if passed.name ~= entranceSignal[3] and passed.name ~= exitSignal[3]
+            and passed.travelDir == passedSignal.dir
+            and (passedSignal.kind == "main" or passedSignal.kind == "inserted" or passedSignal.kind == "repeater")
+            and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
+            relevant[#relevant + 1] = {name = passed.name, kind = passedSignal.kind, index = passed.index}
+        end
+    end
+    for _, entry in ipairs(relevant) do
+        touchedAlongRoute[entry.name] = true
+        if entry.kind == "inserted" then
+            usedInserted[entry.name] = true
+        end
+    end
+
+    -- Remember which direction this route was actually traveling when it reached the exit --
+    -- lets a NEW route later started FROM this same signal continue onward the way traffic
+    -- was actually moving, instead of always re-deriving it from the signal's static facing
+    -- (see findPath's entranceDirOverride).
+    if exitTravelDir then
+        lastRouteTravelDir[exitSignal[3]] = exitTravelDir
+    end
+
+    -- Every Main/Inserted/Repeater signal along the route (entrance included) reacts to
+    -- whatever comes right after it, like a real distant signal -- see
+    -- applyRouteChainStates/chooseProceedState. nextName/nextFallback (the signal just beyond
+    -- THIS route's own exit, or the default to use when there isn't one) are remembered so
+    -- this route's chain can be recomputed later too, whenever THAT signal's own state
+    -- actually changes (setRouteDependency/cascadeDependents).
+    local nextName, nextFallback = resolveNextSignal(exitSignal[1], exitSignal[2], exitTravelDir)
+    activeRouteRelevant[entranceSignal[3]] = relevant
+    activeRouteResult[entranceSignal[3]] = result
+    activeRouteNextFallback[entranceSignal[3]] = nextFallback
+    setRouteDependency(entranceSignal[3], nextName)
+
+    -- A route crossing a level crossing must not clear its signals until the barrier is
+    -- physically confirmed down -- defer the chain to startCrossingArmWait instead of applying
+    -- it immediately. Routes with no crossing behave exactly as before.
+    if next(result.crossings) then
+        local crossingNames = {}
+        for crossingName in pairs(result.crossings) do
+            crossingNames[#crossingNames + 1] = crossingName
+        end
+        startCrossingArmWait(entranceSignal, entranceObj, relevant, result, nextName, nextFallback, crossingNames)
+    else
+        applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
+    end
+
+    -- Remember every non-entrance signal this route cleared, so cancelling the route
+    -- (right-click the entrance, or manually setting it to Stuj) puts them all back to their
+    -- own most-restrictive state too.
+    if next(touchedAlongRoute) then
+        activeRouteSignals[entranceSignal[3]] = touchedAlongRoute
+    end
+
+    -- Reset sibling Inserted signals (other tracks feeding the same shared departure signal)
+    -- that weren't part of this specific route, so only one ever shows authorized at a time.
+    if next(usedInserted) then
+        local entranceDirOverride = lastRouteTravelDir[entranceSignal[3]]
+        for _, siblingName in ipairs(route.siblingInsertedSignals(routeGraph, entranceSignal[3], usedInserted, entranceDirOverride)) do
+            if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
+                applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
+            end
+        end
+    end
+end
+
+-- Function: tryBuildRouteToPoint
+-- Description: Handles a click on a plain track/switch/crossing cell while Route Mode is on
+--              and an entrance is pending -- lets the operator pick a route by pointing at the
+--              physical track instead of needing to know the name of whatever signal lies
+--              further down it (see route.findPathThroughPoint). Returns false (and does
+--              nothing) if there's no route-building click to handle here, so the caller can
+--              fall through to that cell's own normal behavior (e.g. manually toggling a
+--              switch); returns true otherwise, whether the route actually built or an alert
+--              fired for "no route"/"conflicts".
+local function tryBuildRouteToPoint(x, y)
+    if not (routeModeActive and pendingEntrance) then
+        return false
+    end
+
+    local entranceSignal = pendingEntrance
+    local entranceObj = signalGuiObjects[entranceSignal[3]]
+    pendingEntrance = nil
+
+    local entranceDirOverride = lastRouteTravelDir[entranceSignal[3]]
+    local result = route.findPathThroughPoint(routeGraph, entranceSignal[3], x, y, entranceDirOverride)
+    if not result then
+        GUI.alert("Mezi vybranými návěstidly nelze postavit cestu / No route exists between the selected signals")
+        setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
+    elseif not route.tryLock(entranceSignal[3], result) then
+        GUI.alert("Cesta koliduje s již postavenou cestou / Route conflicts with one already set")
+        setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
+    else
+        commitRoute(entranceSignal, entranceObj, signalConfigByName[result.exitName], result)
+    end
+    workspace:draw()
+    return true
+end
+
 -- Draw exit button
 local exitBtn = workspace:addChild(GUI.label(155, 50, 6, 1, 0xFFFFFF, "[Exit]"))
 exitBtn.eventHandler = function(workspace, object, event)
@@ -598,6 +776,21 @@ for _, track in pairs(config.Tracks) do
     for i = 1, unicode.len(track[3] or "") do
         cellObjects[cellKey(track[1] + i - 1, track[2])] = {obj = newTrack, revertColor = revertColor}
     end
+    -- A track entry spans several cells sharing this one widget, so (unlike a switch/crossing,
+    -- always exactly one cell) the specific cell clicked has to be read off the touch event
+    -- itself rather than assumed from track[1]/track[2] -- lets the operator pick a route by
+    -- pointing at any point along the rail instead of only at a named signal.
+    newTrack.eventHandler = function(workspace, object, event, _, touchX)
+        if event == "touch" then
+            -- math.ceil matches how the workspace itself rounds a raw touch coordinate to a
+            -- cell (see handleContainer in grapes/GUI.lua) -- has to match exactly, or a touch
+            -- landing on a fractional coordinate could resolve to the wrong character of a
+            -- multi-cell track run.
+            if tryBuildRouteToPoint(math.ceil(touchX), track[2]) then
+                workspace:draw()
+            end
+        end
+    end
 end
 
 -- Import switches
@@ -609,6 +802,10 @@ for _, switch in pairs(config.Switches) do
     switchGuiObjects[switch[5]] = {obj = newSwitch, cfg = switch}
     newSwitch.eventHandler = function(workspace, object, event)
         if event == "touch" then
+            if tryBuildRouteToPoint(switch[1], switch[2]) then
+                workspace:draw()
+                return
+            end
             if object.locked then return end
             -- When switch is clicked, we toggle the switch in the GUI and send the state to the controller
             object.state = not object.state
@@ -638,6 +835,10 @@ for _, crossing in pairs(config.Crossings) do
     table.insert(crossingObjectsByName[crossing[5]], {obj = newcrossing, cfg = crossing})
     newcrossing.eventHandler = function(workspace, object, event)
         if event == "touch" then
+            if tryBuildRouteToPoint(crossing[1], crossing[2]) then
+                workspace:draw()
+                return
+            end
             if object.locked then return end
             -- When crossing is clicked, we toggle the crossing (and any sibling sharing its
             -- name) in the GUI and send the state to the controller
@@ -698,7 +899,8 @@ for _, signal in pairs(config.Signals) do
                 local entranceObj = signalGuiObjects[entranceSignal[3]]
                 pendingEntrance = nil
 
-                local result = route.findPath(routeGraph, entranceSignal[3], signal[3])
+                local entranceDirOverride = lastRouteTravelDir[entranceSignal[3]]
+                local result = route.findPath(routeGraph, entranceSignal[3], signal[3], entranceDirOverride)
                 if not result then
                     GUI.alert("Mezi vybranými návěstidly nelze postavit cestu / No route exists between the selected signals")
                     setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
@@ -706,119 +908,7 @@ for _, signal in pairs(config.Signals) do
                     GUI.alert("Cesta koliduje s již postavenou cestou / Route conflicts with one already set")
                     setSignalStateGUI(entranceObj, controllers.Signals.getState(entranceSignal[3]), entranceSignal)
                 else
-                    for switchName, icon in pairs(result.switches) do
-                        -- Route-thrown switches bypass their own click handler, so sync the
-                        -- GUI (text + toggle state) here too, or it'll silently drift from
-                        -- the physical position until someone happens to click it manually.
-                        -- Locked while the route holds it, so it can't be manually toggled
-                        -- out from under the route.
-                        local switchEntry = switchGuiObjects[switchName]
-                        if switchEntry then
-                            local toggled = (icon == switchEntry.cfg[4])
-                            controllers.Switches.setActive(switchName, utils.switchActivateState(switchEntry.cfg, toggled))
-                            switchEntry.obj.text = icon
-                            switchEntry.obj.state = toggled
-                            switchEntry.obj.locked = true
-                        end
-                    end
-                    activeRouteSwitches[entranceSignal[3]] = result.switches
-
-                    for crossingName in pairs(result.crossings) do
-                        controllers.Crossings.activate(crossingName, true)
-                        -- Same as switches: route-activated crossings bypass their own click
-                        -- handler, so sync the GUI (lowered look, matching a manual toggle)
-                        -- here too, not just lock it. Color is left alone here -- if the arm
-                        -- isn't confirmed down yet, startCrossingArmWait owns flashing it;
-                        -- otherwise it settles the color itself once confirmed.
-                        for _, entry in ipairs(crossingObjectsByName[crossingName] or {}) do
-                            entry.obj.locked = true
-                            entry.obj.state = true
-                            entry.obj.text = entry.cfg[4]
-                        end
-                    end
-                    activeRouteCrossings[entranceSignal[3]] = result.crossings
-
-                    activeRouteCells[entranceSignal[3]] = result.cells
-                    highlightCells(result.cells, true)
-
-                    -- Any OTHER Main/Inserted/Repeater signal genuinely passed -- in its own
-                    -- facing direction -- along the route (e.g. a shared departure signal
-                    -- like S1-3, an Inserted VL/VS marking which track is in use, or a
-                    -- repeater "Cestové" signal dividing the block) also gets cleared. The
-                    -- clicked exit itself is a pure location marker (it may deliberately
-                    -- face "backwards" relative to the route) and never gets a state, and
-                    -- neither does anything only passed against its own facing.
-                    local usedInserted = {}
-                    local touchedAlongRoute = {}
-                    if route.classifySignal(entranceSignal[3]) == "inserted" then
-                        usedInserted[entranceSignal[3]] = true
-                    end
-
-                    local exitTravelDir = nil
-                    local relevant = {}
-                    for _, passed in ipairs(route.signalsAlongRoute(routeGraph, result)) do
-                        if passed.name == signal[3] then
-                            exitTravelDir = passed.travelDir
-                        end
-                        local passedSignal = routeGraph.signalsByName[passed.name]
-                        if passed.name ~= entranceSignal[3] and passed.name ~= signal[3]
-                            and passed.travelDir == passedSignal.dir
-                            and (passedSignal.kind == "main" or passedSignal.kind == "inserted" or passedSignal.kind == "repeater")
-                            and signalConfigByName[passed.name] and signalGuiObjects[passed.name] then
-                            relevant[#relevant + 1] = {name = passed.name, kind = passedSignal.kind, index = passed.index}
-                        end
-                    end
-                    for _, entry in ipairs(relevant) do
-                        touchedAlongRoute[entry.name] = true
-                        if entry.kind == "inserted" then
-                            usedInserted[entry.name] = true
-                        end
-                    end
-
-                    -- Every Main/Inserted/Repeater signal along the route (entrance
-                    -- included) reacts to whatever comes right after it, like a real
-                    -- distant signal -- see applyRouteChainStates/chooseProceedState.
-                    -- nextName/nextFallback (the signal just beyond THIS route's own exit,
-                    -- or the default to use when there isn't one) are remembered so this
-                    -- route's chain can be recomputed later too, whenever THAT signal's own
-                    -- state actually changes (setRouteDependency/cascadeDependents).
-                    local nextName, nextFallback = resolveNextSignal(signal[1], signal[2], exitTravelDir)
-                    activeRouteRelevant[entranceSignal[3]] = relevant
-                    activeRouteResult[entranceSignal[3]] = result
-                    activeRouteNextFallback[entranceSignal[3]] = nextFallback
-                    setRouteDependency(entranceSignal[3], nextName)
-
-                    -- A route crossing a level crossing must not clear its signals until the
-                    -- barrier is physically confirmed down -- defer the chain to
-                    -- startCrossingArmWait instead of applying it immediately. Routes with no
-                    -- crossing behave exactly as before.
-                    if next(result.crossings) then
-                        local crossingNames = {}
-                        for crossingName in pairs(result.crossings) do
-                            crossingNames[#crossingNames + 1] = crossingName
-                        end
-                        startCrossingArmWait(entranceSignal, entranceObj, relevant, result, nextName, nextFallback, crossingNames)
-                    else
-                        applyRouteChainStates(entranceSignal, entranceObj, relevant, result, nextName, nextFallback)
-                    end
-
-                    -- Remember every non-entrance signal this route cleared, so cancelling
-                    -- the route (right-click the entrance, or manually setting it to Stuj)
-                    -- puts them all back to their own most-restrictive state too.
-                    if next(touchedAlongRoute) then
-                        activeRouteSignals[entranceSignal[3]] = touchedAlongRoute
-                    end
-
-                    -- Reset sibling Inserted signals (other tracks feeding the same shared
-                    -- departure signal) that weren't part of this specific route, so only
-                    -- one ever shows authorized at a time.
-                    if next(usedInserted) then
-                        for _, siblingName in ipairs(route.siblingInsertedSignals(routeGraph, entranceSignal[3], usedInserted)) do
-                            if signalConfigByName[siblingName] and signalGuiObjects[siblingName] then
-                                applyMainSignalState(signalConfigByName[siblingName], signalGuiObjects[siblingName], "StujPosunZak")
-                            end
-                        end
-                    end
+                    commitRoute(entranceSignal, entranceObj, signal, result)
                 end
                 workspace:draw()
             end

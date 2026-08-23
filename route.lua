@@ -209,15 +209,22 @@ end
 -- routes crossing only a few switches stayed fast. switchChoices/path are still cloned only when
 -- they actually change, same as before, so different branches can still commit differently to a
 -- switch they haven't reached yet.
-local function findPathInternal(graph, entranceName, exitName, strictExit)
+-- entranceDirOverride: normally the route's first step is forced along the entrance signal's
+-- own printed facing. A signal that was just the far end (exit) of a previous route, though,
+-- may face "backwards" relative to how the layout is actually meant to continue from there
+-- (e.g. an Inserted VL/VS marker) -- when the caller has remembered which direction that
+-- previous route was actually traveling when it arrived, passing it here lets a NEW route
+-- start onward in that direction instead of blindly re-using the signal's static facing.
+local function findPathInternal(graph, entranceName, exitName, strictExit, entranceDirOverride)
     local entrance = graph.signalsByName[entranceName]
     local exit = graph.signalsByName[exitName]
-    if not entrance or not exit or not entrance.dir then
+    local startFacing = entranceDirOverride or (entrance and entrance.dir)
+    if not entrance or not exit or not startFacing then
         return nil
     end
 
-    local vec = DIRS[entrance.dir]
-    local startX, startY, startDir = entrance.x + vec.dx, entrance.y + vec.dy, entrance.dir
+    local vec = DIRS[startFacing]
+    local startX, startY, startDir = entrance.x + vec.dx, entrance.y + vec.dy, startFacing
     local visited = {[stateKey(startX, startY, startDir)] = true}
     local queue = {
         {
@@ -288,12 +295,230 @@ local function findPathInternal(graph, entranceName, exitName, strictExit)
 end
 
 -- Finds a route from entranceName to exitName. entranceName forces the route's first step
--- in ITS OWN facing direction (a signal only permits movement one way); exitName is purely
--- positional -- the route just needs to reach its cell, regardless of which way it faces.
+-- in ITS OWN facing direction (a signal only permits movement one way), unless
+-- entranceDirOverride is given (see findPathInternal); exitName is purely positional -- the
+-- route just needs to reach its cell, regardless of which way it faces.
 -- Returns nil if none exists, otherwise {switches = {[switchName] = requiredIconGlyph, ...},
 -- crossings = {[crossingName] = true, ...}, cells = {{x,y}, ...}, allStraight = bool}.
-function route.findPath(graph, entranceName, exitName)
-    return findPathInternal(graph, entranceName, exitName, false)
+function route.findPath(graph, entranceName, exitName, entranceDirOverride)
+    return findPathInternal(graph, entranceName, exitName, false, entranceDirOverride)
+end
+
+-- Same search as findPathInternal, but the goal is an arbitrary point (targetX, targetY) in
+-- ANY arrival direction, rather than a named exit signal -- used when the operator clicks a
+-- plain rail cell instead of a signal, to pick which physical branch a route should take
+-- through a junction/switch ladder without needing to know a signal's name there. Returns the
+-- same shape as findPathInternal, plus arrivalDir (the direction of travel at the target cell,
+-- needed by findNextSignalInternal to continue the search onward from it).
+local function findPathToPointInternal(graph, entranceName, targetX, targetY, entranceDirOverride)
+    local entrance = graph.signalsByName[entranceName]
+    local startFacing = entranceDirOverride or (entrance and entrance.dir)
+    if not entrance or not startFacing then
+        return nil
+    end
+
+    local vec = DIRS[startFacing]
+    local startX, startY, startDir = entrance.x + vec.dx, entrance.y + vec.dy, startFacing
+    local visited = {[stateKey(startX, startY, startDir)] = true}
+    local queue = {
+        {
+            x = startX, y = startY, dir = startDir,
+            switchChoices = {},
+            path = {{x = entrance.x, y = entrance.y}},
+        },
+    }
+    local head = 1
+
+    while head <= #queue do
+        local node = queue[head]
+        head = head + 1
+
+        if node.x == targetX and node.y == targetY then
+            local path = cloneTable(node.path)
+            path[#path + 1] = {x = node.x, y = node.y}
+
+            local allStraight = true
+            for _, icon in pairs(node.switchChoices) do
+                if route.isCurveGlyph(icon) then
+                    allStraight = false
+                    break
+                end
+            end
+
+            local crossings = {}
+            for _, c in ipairs(path) do
+                local cell = graph.cells[key(c.x, c.y)]
+                if cell and cell.kind == "crossing" then
+                    crossings[cell.name] = true
+                end
+            end
+
+            return {switches = node.switchChoices, crossings = crossings, cells = path,
+                    allStraight = allStraight, arrivalDir = node.dir}
+        end
+
+        local cell = graph.cells[key(node.x, node.y)]
+        if cell then
+            local path = cloneTable(node.path)
+            path[#path + 1] = {x = node.x, y = node.y}
+
+            for _, opt in ipairs(continuationsFor(cell, node.dir, node.switchChoices)) do
+                local optVec = DIRS[opt.dir]
+                local nx, ny = node.x + optVec.dx, node.y + optVec.dy
+                if not (nx == entrance.x and ny == entrance.y) then
+                    local sk = stateKey(nx, ny, opt.dir)
+                    if not visited[sk] then
+                        visited[sk] = true
+                        local switchChoices = node.switchChoices
+                        if opt.icon then
+                            switchChoices = cloneTable(node.switchChoices)
+                            switchChoices[cell.name] = opt.icon
+                        end
+                        queue[#queue + 1] = {
+                            x = nx, y = ny, dir = opt.dir,
+                            switchChoices = switchChoices, path = path,
+                        }
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Continues a search forward from an arbitrary (x, y, dir) state (where findPathToPointInternal
+-- left off) until it reaches a Main/Inserted/Repeater signal in ITS OWN facing direction.
+-- Unlike route.nextSignal (a simple linear walk that gives up the moment it hits an unresolved
+-- switch), this is a full breadth-first search so it can resolve any number of further switches
+-- along the way -- needed because a clicked rail cell is very often itself mid-ladder, with more
+-- switches between it and the next real signal. Returns {switches, crossings, cells,
+-- allStraight, exitName}, or nil if no such signal is reachable.
+local function findNextSignalInternal(graph, startX, startY, startDir)
+    local byPosition = {}
+    for name, sig in pairs(graph.signalsByName) do
+        local k = key(sig.x, sig.y)
+        byPosition[k] = byPosition[k] or {}
+        table.insert(byPosition[k], name)
+    end
+
+    local function signalAt(x, y, dir)
+        for _, name in ipairs(byPosition[key(x, y)] or {}) do
+            local sig = graph.signalsByName[name]
+            if sig.dir == dir and (sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater") then
+                return name
+            end
+        end
+        return nil
+    end
+
+    -- The starting cell itself might already BE the next signal (e.g. the operator clicked
+    -- right on top of one) -- same "check here first" rule route.nextSignal uses.
+    local startMatch = signalAt(startX, startY, startDir)
+    if startMatch then
+        return {switches = {}, crossings = {}, cells = {{x = startX, y = startY}},
+                allStraight = true, exitName = startMatch}
+    end
+
+    local visited = {[stateKey(startX, startY, startDir)] = true}
+    local queue = {{x = startX, y = startY, dir = startDir, switchChoices = {}, path = {}}}
+    local head = 1
+
+    while head <= #queue do
+        local node = queue[head]
+        head = head + 1
+
+        local path = cloneTable(node.path)
+        path[#path + 1] = {x = node.x, y = node.y}
+
+        local found = signalAt(node.x, node.y, node.dir)
+        if found then
+            local allStraight = true
+            for _, icon in pairs(node.switchChoices) do
+                if route.isCurveGlyph(icon) then
+                    allStraight = false
+                    break
+                end
+            end
+
+            local crossings = {}
+            for _, c in ipairs(path) do
+                local cell = graph.cells[key(c.x, c.y)]
+                if cell and cell.kind == "crossing" then
+                    crossings[cell.name] = true
+                end
+            end
+
+            return {switches = node.switchChoices, crossings = crossings, cells = path,
+                    allStraight = allStraight, exitName = found}
+        end
+
+        local cell = graph.cells[key(node.x, node.y)]
+        if cell then
+            for _, opt in ipairs(continuationsFor(cell, node.dir, node.switchChoices)) do
+                local optVec = DIRS[opt.dir]
+                local nx, ny = node.x + optVec.dx, node.y + optVec.dy
+                local sk = stateKey(nx, ny, opt.dir)
+                if not visited[sk] then
+                    visited[sk] = true
+                    local switchChoices = node.switchChoices
+                    if opt.icon then
+                        switchChoices = cloneTable(node.switchChoices)
+                        switchChoices[cell.name] = opt.icon
+                    end
+                    queue[#queue + 1] = {
+                        x = nx, y = ny, dir = opt.dir,
+                        switchChoices = switchChoices, path = path,
+                    }
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Builds a route from entranceName through an arbitrary clicked point (x, y) and onward to
+-- whatever real signal comes next, stitching the two legs together. This is what lets the
+-- operator pick a route by pointing at the physical track instead of needing to know the name
+-- of a signal further down it -- the clicked point exists purely to disambiguate which branch
+-- to take at a junction/switch ladder; the actual route endpoint is always a real signal, same
+-- as clicking one directly. Returns the same shape as findPath, plus exitName (the resolved
+-- signal), or nil if the point isn't reachable from the entrance, or no real signal is
+-- reachable beyond it.
+function route.findPathThroughPoint(graph, entranceName, x, y, entranceDirOverride)
+    local toPoint = findPathToPointInternal(graph, entranceName, x, y, entranceDirOverride)
+    if not toPoint then
+        return nil
+    end
+
+    local onward = findNextSignalInternal(graph, x, y, toPoint.arrivalDir)
+    if not onward then
+        return nil
+    end
+
+    local cells = cloneTable(toPoint.cells)
+    -- onward.cells[1] duplicates the shared boundary point (x, y), already the last element
+    -- of toPoint.cells -- skip it when stitching the two legs together.
+    for i = 2, #onward.cells do
+        cells[#cells + 1] = onward.cells[i]
+    end
+
+    local switches = cloneTable(toPoint.switches)
+    for name, icon in pairs(onward.switches) do
+        switches[name] = icon
+    end
+
+    local crossings = cloneTable(toPoint.crossings)
+    for name in pairs(onward.crossings) do
+        crossings[name] = true
+    end
+
+    return {
+        switches = switches, crossings = crossings, cells = cells,
+        allStraight = toPoint.allStraight and onward.allStraight,
+        exitName = onward.exitName,
+    }
 end
 
 local function dirFromVector(dx, dy)
@@ -453,10 +678,11 @@ end
 -- strictly reachable from the same entrance (arriving in their own facing direction) that
 -- were NOT used -- these should be reset to their most-restrictive state so only one
 -- track ever shows authorized off a shared departure signal at a time.
-function route.siblingInsertedSignals(graph, entranceName, usedNames)
+function route.siblingInsertedSignals(graph, entranceName, usedNames, entranceDirOverride)
     local siblings = {}
     for name, sig in pairs(graph.signalsByName) do
-        if sig.kind == "inserted" and not usedNames[name] and findPathInternal(graph, entranceName, name, true) then
+        if sig.kind == "inserted" and not usedNames[name]
+            and findPathInternal(graph, entranceName, name, true, entranceDirOverride) then
             siblings[#siblings + 1] = name
         end
     end
