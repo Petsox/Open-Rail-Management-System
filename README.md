@@ -13,13 +13,11 @@ Needed Mods:
 
   [OpenComputers](https://www.curseforge.com/minecraft/mc-mods/opencomputers)
 
-  [SignalCraft-Integrations](https://github.com/Petsox/SignalCraft-Integrations)
+  [SignalCraft](https://www.curseforge.com/minecraft/mc-mods/signalcraft)
 
-  [Railcraft](https://github.com/Petsox/Railcraft-mc-1.7.10)
+  [SignalCraft-Integrations](https://www.curseforge.com/minecraft/mc-mods/signalcraft-integrations)
   
   [TrainCraft](https://www.curseforge.com/minecraft/mc-mods/traincraft)
-
-  [SignalCraft](https://www.curseforge.com/minecraft/mc-mods/signalcraft)
   
   </br>
   
