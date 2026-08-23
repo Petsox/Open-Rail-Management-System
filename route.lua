@@ -388,12 +388,19 @@ local function findPathToPointInternal(graph, entranceName, targetX, targetY, en
 end
 
 -- Continues a search forward from an arbitrary (x, y, dir) state (where findPathToPointInternal
--- left off) until it reaches a Main/Inserted/Repeater signal in ITS OWN facing direction.
--- Unlike route.nextSignal (a simple linear walk that gives up the moment it hits an unresolved
--- switch), this is a full breadth-first search so it can resolve any number of further switches
--- along the way -- needed because a clicked rail cell is very often itself mid-ladder, with more
--- switches between it and the next real signal. Returns {switches, crossings, cells,
--- allStraight, exitName}, or nil if no such signal is reachable.
+-- left off) until it reaches a Main/Inserted/Repeater signal cell -- ANY such signal, regardless
+-- of which way it faces. This is resolving what a clicked point means as a route's ENDPOINT,
+-- exactly like directly clicking an exit signal (route.findPath's exitName is purely
+-- positional, strictExit=false) -- many endpoint signals, like Inserted VL/VS markers, are
+-- deliberately meant to be selected "backwards", so requiring a facing match here (like
+-- route.nextSignal does, for a completely different purpose -- deciding downstream STATE, where
+-- a backwards-facing signal genuinely isn't a real authority) would make them unreachable by a
+-- rail click even though a direct click on the same signal works fine. Unlike route.nextSignal
+-- (a simple linear walk that gives up the moment it hits an unresolved switch), this is a full
+-- breadth-first search so it can resolve any number of further switches along the way -- needed
+-- because a clicked rail cell is very often itself mid-ladder, with more switches between it and
+-- the next real signal. Returns {switches, crossings, cells, allStraight, exitName}, or nil if
+-- no such signal is reachable.
 local function findNextSignalInternal(graph, startX, startY, startDir)
     local byPosition = {}
     for name, sig in pairs(graph.signalsByName) do
@@ -402,10 +409,10 @@ local function findNextSignalInternal(graph, startX, startY, startDir)
         table.insert(byPosition[k], name)
     end
 
-    local function signalAt(x, y, dir)
+    local function signalAt(x, y)
         for _, name in ipairs(byPosition[key(x, y)] or {}) do
             local sig = graph.signalsByName[name]
-            if sig.dir == dir and (sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater") then
+            if sig.kind == "main" or sig.kind == "inserted" or sig.kind == "repeater" then
                 return name
             end
         end
@@ -414,7 +421,7 @@ local function findNextSignalInternal(graph, startX, startY, startDir)
 
     -- The starting cell itself might already BE the next signal (e.g. the operator clicked
     -- right on top of one) -- same "check here first" rule route.nextSignal uses.
-    local startMatch = signalAt(startX, startY, startDir)
+    local startMatch = signalAt(startX, startY)
     if startMatch then
         return {switches = {}, crossings = {}, cells = {{x = startX, y = startY}},
                 allStraight = true, exitName = startMatch}
@@ -431,7 +438,7 @@ local function findNextSignalInternal(graph, startX, startY, startDir)
         local path = cloneTable(node.path)
         path[#path + 1] = {x = node.x, y = node.y}
 
-        local found = signalAt(node.x, node.y, node.dir)
+        local found = signalAt(node.x, node.y)
         if found then
             local allStraight = true
             for _, icon in pairs(node.switchChoices) do
