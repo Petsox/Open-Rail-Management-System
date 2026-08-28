@@ -35,7 +35,7 @@ This installs from the <b>automatic-route-building</b> branch -- ORMS's newest f
 
  Alternatively, if the Github installer doesn't work (you are getting a certificate error), you may try the alternative Pastebin installer, which will also install ORMS into <i>/home/orms</i>:
 
- 	pastebin run -f iQAC8EfE
+ 	pastebin run -f BH2L1UFN
 </br>
 
 Make a Digital Crossing Controller named "Crossings", a Universal Digital Controller named "Switches" and a Digital Controller named "Signals" (all from SignalCraft-Integrations), and connect them to the computer with a cable from the top
